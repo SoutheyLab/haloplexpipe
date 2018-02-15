@@ -3,15 +3,15 @@
 from setuptools import setup
 
 setup(
-    name='hiplexpipe',
+    name='haloplexpipe',
     version='0.1',
-    author='Khalid Mahmood',
-    author_email='khalid.mahmood@unimelb.edu.au',
+    author='Jason Steen',
+    author_email='jason.steen@monash.edu',
     packages=['src'],
     entry_points={
-        'console_scripts': ['hiplexpipe = src.main:main']
+        'console_scripts': ['haloplexpipe = src.main:main']
     },
-    url='https://github.com/khalidm/hiplexpipe',
+    url='https://github.com/SoutheyLab/haloplexpipe',
     license='LICENSE.txt',
     description='hiplexpipe is a bioinformatics pipeline to call variants from HiPlex data.',
     long_description=open('README.md').read(),

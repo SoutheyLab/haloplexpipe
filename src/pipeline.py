@@ -9,7 +9,7 @@ from stages import Stages
 def make_pipeline(state):
     '''Build the pipeline by constructing stages and connecting them together'''
     # Build an empty pipeline
-    pipeline = Pipeline(name='hiplexpipe')
+    pipeline = Pipeline(name='haloplexpipe')
     # Get a list of paths to all the FASTQ files
     fastq_files = state.config.get_option('fastqs')
     # Stages are dependent on the state
@@ -23,83 +23,59 @@ def make_pipeline(state):
         name='original_fastqs',
         output=fastq_files)
 
+    pipeline.transform(
+        task_func=stages.run_surecalltrimmer,
+        name='run_surecalltrimmer',
+        input=output_from('original_fastqs'),
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+)_R1_(?P<lib>[a-zA-Z0-9-:]+).fastq.gz'),
+        add_inputs=add_inputs(
+            '{path[0]}/{sample[0]}_R2_{lib[0]}.fastq.gz'),
+
+        output='["processed_fastqs/{sample[0]}_R1_processed.fastq.gz",
+                 "processed_fastqs/{sample[0]}_R2_processed.fastq.gz"]')
+    
+
     # Align paired end reads in FASTQ to the reference producing a BAM file
     pipeline.transform(
         task_func=stages.align_bwa,
         name='align_bwa',
-        input=output_from('original_fastqs'),
-        # Match the R1 (read 1) FASTQ file and grab the path and sample name.
-        # This will be the first input to the stage.
-        # Hi-Plex example: OHI031002-P02F04_S318_L001_R1_001.fastq
-        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+)_R1_(?P<lib>[a-zA-Z0-9-:]+).fastq.gz'),
+        input=output_from('run_surecalltrimmer'),
+        filter=formatter('processed_fastqs/(?P<sample>[a-zA-Z0-9_-]+)_R1_processed.fastq.gz'),
+        add_inputs=add_inputs('processed_fastqs/(?P<sample>[a-zA-Z0-9_-]+)_R2_processed.fastq.gz'),
+        extras='{sample[0]}',
+        output='alignments/{sample[0]}.bam')
 
-        # Add one more inputs to the stage:
-        #    1. The corresponding R2 FASTQ file
-        # Hi-Plex example: OHI031002-P02F04_S318_L001_R2_001.fastq
-        add_inputs=add_inputs(
-            '{path[0]}/{sample[0]}_R2_{lib[0]}.fastq.gz'),
-
-        # Add an "extra" argument to the state (beyond the inputs and outputs)
-        # which is the sample name. This is needed within the stage for finding out
-        # sample specific configuration options
-        extras=['{sample[0]}', '{lib[0]}'],
-        # The output file name is the sample name with a .bam extension.
-        output='alignments/{sample[0]}.clipped.bam')
-
-
-    # Call variants using undr_rover
+    #Run locatit from agilent.  this should produce sorted bam files, so no sorting needed at the next step
     pipeline.transform(
-        task_func=stages.apply_undr_rover,
-        name='apply_undr_rover',
-        input=output_from('original_fastqs'),
-        # Match the R1 (read 1) FASTQ file and grab the path and sample name.
-        # This will be the first input to the stage.
-        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+)_R1_(?P<lib>[a-zA-Z0-9-:]+).fastq.gz'),
-        add_inputs=add_inputs(
-            '{path[0]}/{sample[0]}_R2_{lib[0]}.fastq.gz'),
-        extras=['{sample[0]}'],
-
-        # The output file name is the sample name with a .bam extension.
-        output='variants/undr_rover/{sample[0]}.vcf')
-
-    # Sort the BAM file using Picard
-    pipeline.transform(
-        task_func=stages.sort_bam_picard,
-        name='sort_bam_picard',
-        input=output_from('align_bwa'),
-        filter=suffix('.clipped.bam'),
-        output='.clipped.sort.bam')
-
-    # High quality and primary alignments
-    pipeline.transform(
-        task_func=stages.primary_bam,
-        name='primary_bam',
-        input=output_from('sort_bam_picard'),
-        filter=suffix('.clipped.sort.bam'),
-        output='.clipped.sort.hq.bam')
-
+        task_func=stages.run_locatit,
+        name='run_locatit',
+        input=output_from('align_bwa', 'original_fastqs'),
+        filter=formatter('processed_fastqs/(?P<sample>[a-zA-Z0-9_-]+.bam'),
+        add_inputs=add_inputs(['.+/{sample[0]}_I2.fastq.gz'])
+        output='alignments/{sample[0]}.locatit.bam'
+    
     # index bam file
     pipeline.transform(
         task_func=stages.index_sort_bam_picard,
         name='index_bam',
-        input=output_from('primary_bam'),
-        filter=suffix('.clipped.sort.hq.bam'),
-        output='.clipped.sort.hq.bam.bai')
+        input=output_from('run_locatit'),
+        filter=suffix('.locatit.bam'),
+        output='.locatit.bam.bai')
 
     # generate mapping metrics.
     pipeline.transform(
         task_func=stages.generate_amplicon_metrics,
         name='generate_amplicon_metrics',
-        input=output_from('primary_bam'),
-        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).clipped.sort.hq.bam'),
+        input=output_from('run_locatit'),
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).locatit.bam'),
         output='alignments/metrics/{sample[0]}.amplicon-metrics.txt',
         extras=['{sample[0]}'])
 
     pipeline.transform(
         task_func=stages.intersect_bed,
         name='intersect_bed',
-        input=output_from('primary_bam'),
-        filter=suffix('.clipped.sort.hq.bam'),
+        input=output_from('run_locatit'),
+        filter=suffix('.locatit.bam'),
         output='.intersectbed.bam')
 
     pipeline.transform(
@@ -112,8 +88,8 @@ def make_pipeline(state):
     pipeline.transform(
         task_func=stages.genome_reads,
         name='genome_reads',
-        input=output_from('primary_bam'),
-        filter=suffix('.clipped.sort.hq.bam'),
+        input=output_from('run_locatit'),
+        filter=suffix('.locatit.bam'),
         output='.mapped_to_genome.txt')
 
     pipeline.transform(
@@ -126,8 +102,8 @@ def make_pipeline(state):
     pipeline.transform(
         task_func=stages.total_reads,
         name='total_reads',
-        input=output_from('align_bwa'),
-        filter=suffix('.clipped.bam'),
+        input=output_from('run_locatit'),
+        filter=suffix('.locatit.bam'),
         output='.total_raw_reads.txt')
 
     pipeline.collate(
@@ -143,8 +119,8 @@ def make_pipeline(state):
     (pipeline.transform(
         task_func=stages.call_haplotypecaller_gatk,
         name='call_haplotypecaller_gatk',
-        input=output_from('primary_bam'),
-        filter=formatter('.+/(?P<sample>[a-zA-Z0-9-_]+).clipped.sort.hq.bam'),
+        input=output_from('run_locatit'),
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9-_]+).locatit.bam'),
         output='variants/gatk/{sample[0]}.g.vcf')
         .follows('index_sort_bam_picard'))
 
@@ -228,34 +204,5 @@ def make_pipeline(state):
         output='.raw.annotate.filtered.merged.split_multi.vep.vcf')
         .follows('index_final_vcf'))
 
-#### concatenate undr_rover vcfs ####
-
-    pipeline.transform(
-        task_func=stages.sort_vcfs,
-        name='sort_vcfs',
-        input=output_from('apply_undr_rover'),
-        filter=suffix('.vcf'),
-        output='.sorted.vcf.gz')
-
-    pipeline.transform(
-        task_func=stages.index_vcfs,
-        name='index_vcfs',
-        input=output_from('sort_vcfs'),
-        filter=suffix('.sorted.vcf.gz'),
-        output='.sorted.vcf.gz.tbi')
-
-    (pipeline.merge(
-        task_func=stages.concatenate_vcfs,
-        name='concatenate_vcfs',
-        input=output_from('sort_vcfs'),
-        output='variants/undr_rover/combined_undr_rover.vcf.gz')
-        .follows('index_vcfs')) 
-
-    pipeline.transform(
-        task_func=stages.index_final_vcf,
-        name='index_final_vcf',
-        input=output_from('concatenate_vcfs'),
-        filter=suffix('.vcf.gz'),
-        output='.vcf.gz.tbi')
 
     return pipeline

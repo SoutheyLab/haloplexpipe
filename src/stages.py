@@ -12,7 +12,6 @@ from runner import run_stage
 import os
 import math
 
-# PICARD_JAR = '$PICARD_HOME/lib/picard-1.69.jar'
 PICARD_JAR = '/usr/local/picard/2.9.2/picard.jar'
 SNPEFF_JAR = '/usr/local/easybuild/software/snpEff/4.1d-Java-1.7.0_80/snpEff.jar'
 
@@ -40,14 +39,7 @@ class Stages(object):
         self.one_k_g_indels = self.get_options('one_k_g_indels')
         self.one_k_g_highconf_snps = self.get_options('one_k_g_highconf_snps')
         self.hapmap = self.get_options('hapmap')
-        self.bamclipper = self.get_options('bamclipper')
-        self.coord_file = self.get_options('coord_file')
         self.interval_file = self.get_options('interval_file')
-        self.primer_file = self.get_options('primer_file')
-        self.primer_bedpe_file = self.get_options('primer_bedpe_file')
-        self.proportionthresh = self.get_options('proportionthresh')
-        self.absthresh = self.get_options('absthresh')
-        self.maxvariants = self.get_options('maxvariants')
         self.other_vep = self.get_options('other_vep')
         self.brcaex = self.get_options('vep_brcaex')
         self.gnomad = self.get_options('vep_gnomad')
@@ -57,7 +49,7 @@ class Stages(object):
         self.dbnsfp = self.get_options('vep_dbnsfp')
         self.dbscsnv = self.get_options('vep_dbscsnv')
         self.cadd = self.get_options('vep_cadd')
-
+        self.locatit_bed_file = self.get_options('locatit_bedfile')
 
 
     def run_picard(self, stage, args):
@@ -78,7 +70,20 @@ class Stages(object):
         '''Original fastq files'''
         pass
 
-    def align_bwa(self, inputs, bam_out, sample_id, lib):
+    def run_surecalltrimmer(self, inputs, outputs):
+        '''Run SurecallTrimmer on the raw reads'''
+        fastq_read1_in, fastq_read2_in = inputs
+        safe_make_dir('processed_fastqs')
+
+        command = 'java -Xmx{mem}g -jar /home/jste0021/vh83/local_software/agent/SurecallTrimmer.jar -fq1 {fastq_read1} -fq2 {fastq_read2} -halo -outloc ./processed_fastqs' \
+                  .format(mem=self.state.config.get_stage_options('run_surecalltrimmer', 'mem'),
+                          fastq_read1=fastq_read1_in,
+                          fastq_read2=fastq_read2_in)
+
+        run_stage(self.state, 'run_surecalltrimmer', command) 
+
+
+    def align_bwa(self, inputs, bam_out, sample_id):
         '''Align the paired end fastq files to the reference genome using bwa'''
         fastq_read1_in, fastq_read2_in = inputs
         cores = self.get_stage_options('align_bwa', 'cores')
@@ -86,63 +91,24 @@ class Stages(object):
         read_group = '"@RG\\tID:{sample}\\tSM:{sample}\\tPU:lib1\\tPL:Illumina"' \
             .format(sample=sample_id)
         command = 'bwa mem -M -t {cores} -R {read_group} {reference} {fastq_read1} {fastq_read2} ' \
-                  '| {bamclipper} -i -p {primer_bedpe_file} -n 1 ' \
                   '| samtools view -b -h -o {bam} -' \
                   .format(cores=cores,
                           read_group=read_group,
                           fastq_read1=fastq_read1_in,
                           fastq_read2=fastq_read2_in,
                           reference=self.reference,
-                          bamclipper=self.bamclipper,
-                          primer_bedpe_file=self.primer_bedpe_file,
                           bam=bam_out)
         run_stage(self.state, 'align_bwa', command)
 
-    def apply_undr_rover(self, inputs, vcf_output, sample_id):
-        '''Apply undr_rover to call variants from paired end fastq files'''
-        fastq_read1_in, fastq_read2_in = inputs
-        cores = self.get_stage_options('apply_undr_rover', 'cores')
-        safe_make_dir('variants/undr_rover')
-        safe_make_dir('variants/undr_rover/coverdir')
-        coverdir = "variants/undr_rover/coverdir"
-        coverfile = sample_id + ".coverage"
+    def run_locatit(self, bam_in, bam_out):
+         command = 'java –Xmx{mem}G -jar /home/jste0021/vh83/local_software/agent/LocatIt.jar –q 25 –m 1 -U -IB -OB -b {locatit_bed_file} ' \
+                   '-o {bam_out} {bam_in} {index_file}' \
+                 .format(mem=self.state.config.get_stage_options('run_locatit', 'mem'),
+                         locatit_bed_file=self.locatit_bed_file,
+                         bam_in=bam_in,
+                         bam_out=bam_out,
+                         index_file=index_file)
 
-        command = 'undr_rover --primer_coords {coord_file} ' \
-                  '--primer_sequences {primer_file} ' \
-                  '--reference {reference} ' \
-                  '--out {vcf_output} ' \
-                  '--coverfile {coverdir}/{coverfile} ' \
-                  '--proportionthresh {proportionthresh} ' \
-                  '--absthresh {absthresh} ' \
-                  '--max_variants {maxvariants} ' \
-                  '--fast --snvthresh 10 ' \
-                  '{fastq_read1} {fastq_read2}'.format(
-                        coord_file=self.coord_file, primer_file=self.primer_file,
-                        reference=self.reference,
-                        vcf_output=vcf_output,
-                        coverdir=coverdir,
-                        proportionthresh=self.proportionthresh,
-                        absthresh=self.absthresh,
-                        maxvariants=self.maxvariants,
-                        coverfile=coverfile,
-                        fastq_read1=fastq_read1_in,
-                        fastq_read2=fastq_read2_in)
-        run_stage(self.state, 'apply_undr_rover', command)
-
-    def sort_bam_picard(self, bam_in, sorted_bam_out):
-        '''Sort the BAM file using Picard'''
-        picard_args = 'SortSam INPUT={bam_in} OUTPUT={sorted_bam_out} ' \
-                      'VALIDATION_STRINGENCY=LENIENT SORT_ORDER=coordinate ' \
-                      'MAX_RECORDS_IN_RAM=5000000 CREATE_INDEX=True'.format(
-                          bam_in=bam_in, sorted_bam_out=sorted_bam_out)
-        self.run_picard('sort_bam_picard', picard_args)
-
-    def primary_bam(self, bam_in, sbam_out):
-        '''Only keep primary alignments in the BAM file using samtools'''
-        command = 'samtools view -h -q 1 -f 2 -F 4 -F 8 -F 256 -b ' \
-                    '-o {sbam_out} {bam_in}'.format(
-                        bam_in=bam_in, sbam_out=sbam_out)
-        run_stage(self.state, 'primary_bam', command)
 
     def index_sort_bam_picard(self, bam_in, bam_index):
         '''Index sorted bam using samtools'''
@@ -325,7 +291,6 @@ class Stages(object):
                       "--fasta {reference} " \
                       "--sift b --polyphen b --symbol --numbers --biotype --total_length --hgvs --format vcf " \
                       "--vcf --force_overwrite --flag_pick --no_stats " \
-                      "--custom {undr_rover_vcf},undrrover,vcf,exact,0,Sample,PCT " \
                       "--custom {brcaexpath},brcaex,vcf,exact,0,Clinical_significance_ENIGMA,Comment_on_clinical_significance_ENIGMA,Date_last_evaluated_ENIGMA,Pathogenicity_expert,HGVS_cDNA,HGVS_Protein,BIC_Nomenclature " \
                       "--custom {gnomadpath},gnomAD,vcf,exact,0,AF_NFE,AN_NFE " \
                       "--custom {revelpath},RVL,vcf,exact,0,REVEL_SCORE " \
@@ -349,7 +314,6 @@ class Stages(object):
                                             dbnsfppath=self.dbnsfp, 
                                             dbscsnvpath=self.dbscsnv, 
                                             caddpath=self.cadd,
-                                            undr_rover_vcf=undr_rover_vcf)
         run_stage(self.state, 'apply_vep', vep_command)
 
 

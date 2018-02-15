@@ -7,7 +7,7 @@ Copyright: 2015
 
 See ../README.md for details about how to use the program.
 
-Repository: https://github.com/khalidm/hiplexpipe
+Repository: https://github.com/SoutheyLab/haloplexpipe
 '''
 
 from __future__ import print_function

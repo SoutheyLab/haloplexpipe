@@ -8,4 +8,4 @@ configuration.
 
 import pkg_resources  # part of setuptools
 
-version = pkg_resources.require("hiplexpipe")[0].version
+version = pkg_resources.require("haloplexpipe")[0].version
