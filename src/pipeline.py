@@ -31,8 +31,7 @@ def make_pipeline(state):
         add_inputs=add_inputs(
             '{path[0]}/{sample[0]}_R2_{lib[0]}.fastq.gz'),
 
-        output='["processed_fastqs/{sample[0]}_R1_processed.fastq.gz",
-                 "processed_fastqs/{sample[0]}_R2_processed.fastq.gz"]')
+        output='["processed_fastqs/{sample[0]}_R1_processed.fastq.gz", "processed_fastqs/{sample[0]}_R2_processed.fastq.gz"]')
     
 
     # Align paired end reads in FASTQ to the reference producing a BAM file
