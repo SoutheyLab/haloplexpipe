@@ -70,15 +70,19 @@ class Stages(object):
         '''Original fastq files'''
         pass
 
-    def run_surecalltrimmer(self, inputs, outputs):
+    def run_surecalltrimmer(self, inputs, outputs, sample_id):
         '''Run SurecallTrimmer on the raw reads'''
         fastq_read1_in, fastq_read2_in = inputs
         safe_make_dir('processed_fastqs')
 
-        command = 'java -Xmx{mem}g -jar /home/jste0021/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar -fq1 {fastq_read1} -fq2 {fastq_read2} -halo -out_loc ./processed_fastqs' \
+        command = 'java -Xmx{mem}g -jar /home/jste0021/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar ' \
+                                   '-fq1 {fastq_read1} -fq2 {fastq_read2} -halo -out_loc ./processed_fastqs; ' \
+                                   'mv ./processed_fastqs/{sample[0]}_R1.fastq.gz* ./processed_fastqs/{sample[0]}_R1.processed.fastq.gz; ' \
+                                   'mv ./processed_fastqs/{sample[0]}_R2.fastq.gz* ./processed_fastqs/{sample[0]}_R2.processed.fastq.gz' \
                   .format(mem=self.state.config.get_stage_options('run_surecalltrimmer', 'mem'),
                           fastq_read1=fastq_read1_in,
-                          fastq_read2=fastq_read2_in)
+                          fastq_read2=fastq_read2_in,
+                          sample=sample_id)
 
         run_stage(self.state, 'run_surecalltrimmer', command) 
 

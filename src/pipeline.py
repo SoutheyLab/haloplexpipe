@@ -39,8 +39,8 @@ def make_pipeline(state):
         task_func=stages.align_bwa,
         name='align_bwa',
         input=output_from('run_surecalltrimmer'),
-        filter=formatter('processed_fastqs/(?P<sample>[a-zA-Z0-9_-]+)_R1.fastq.gz(?P<suretrim>[a-zA-Z0-9_-]+).fastq.gz'),
-        add_inputs=add_inputs('processed_fastqs/{sample[0]}_R2.fastq.[a-zA-Z0-9_-]+.fastq.gz'),
+        filter=formatter('processed_fastqs/(?P<sample>[a-zA-Z0-9_-]+)_R1.processed.fastq.gz'),
+        add_inputs=add_inputs('processed_fastqs/{sample[0]}_R2.processed.fastq.gz'),
         extras=['{sample[0]}'],
         output='alignments/{sample[0]}.bam')
 
