@@ -49,7 +49,7 @@ def make_pipeline(state):
         task_func=stages.run_locatit,
         name='run_locatit',
         input=output_from('align_bwa', 'original_fastqs'),
-        filter=formatter('processed_fastqs/(?P<sample>[a-zA-Z0-9_-]+.bam'),
+        filter=formatter('processed_fastqs/(?P<sample>[a-zA-Z0-9_-]+).bam'),
         add_inputs=add_inputs(['.+/{sample[0]}_I2.fastq.gz']),
         output='alignments/{sample[0]}.locatit.bam')
     
