@@ -101,7 +101,7 @@ class Stages(object):
         run_stage(self.state, 'align_bwa', command)
 
     def run_locatit(self, bam_in, bam_out):
-         command = 'java –Xmx{mem}G -jar /home/jste0021/vh83/local_software/agent/LocatIt.jar –q 25 –m 1 -U -IB -OB -b {locatit_bed_file} ' \
+         command = 'java -Xmx{mem}G -jar /home/jste0021/vh83/local_software/agent/LocatIt.jar -q 25 -m 1 -U -IB -OB -b {locatit_bed_file} ' \
                    '-o {bam_out} {bam_in} {index_file}' \
                  .format(mem=self.state.config.get_stage_options('run_locatit', 'mem'),
                          locatit_bed_file=self.locatit_bed_file,
