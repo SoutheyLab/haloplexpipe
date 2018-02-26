@@ -40,8 +40,8 @@ def make_pipeline(state):
         name='align_bwa',
         input=output_from('run_surecalltrimmer'),
         filter=formatter('processed_fastqs/(?P<sample>[a-zA-Z0-9_-]+)_R1_processed.fastq.gz'),
-        add_inputs=add_inputs('processed_fastqs/(?P<sample>[a-zA-Z0-9_-]+)_R2_processed.fastq.gz'),
-        extras='{sample[0]}',
+        add_inputs=add_inputs('processed_fastqs/{sample[0]}_R2_processed.fastq.gz'),
+        extras=['{sample[0]}'],
         output='alignments/{sample[0]}.bam')
 
     #Run locatit from agilent.  this should produce sorted bam files, so no sorting needed at the next step
