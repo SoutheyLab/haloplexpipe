@@ -75,7 +75,7 @@ class Stages(object):
         fastq_read1_in, fastq_read2_in = inputs
         safe_make_dir('processed_fastqs')
 
-        command = 'java -Xmx{mem}g -jar /home/jste0021/vh83/local_software/agent/SurecallTrimmer.jar -fq1 {fastq_read1} -fq2 {fastq_read2} -halo -outloc ./processed_fastqs' \
+        command = 'java -Xmx{mem}g -jar /home/jste0021/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar -fq1 {fastq_read1} -fq2 {fastq_read2} -halo -outloc ./processed_fastqs' \
                   .format(mem=self.state.config.get_stage_options('run_surecalltrimmer', 'mem'),
                           fastq_read1=fastq_read1_in,
                           fastq_read2=fastq_read2_in)
@@ -101,7 +101,7 @@ class Stages(object):
         run_stage(self.state, 'align_bwa', command)
 
     def run_locatit(self, bam_in, bam_out):
-         command = 'java -Xmx{mem}G -jar /home/jste0021/vh83/local_software/agent/LocatIt.jar -q 25 -m 1 -U -IB -OB -b {locatit_bed_file} ' \
+         command = 'java -Xmx{mem}G -jar /home/jste0021/vh83/local_software/agent/LocatIt_v4.0.1.jar -q 25 -m 1 -U -IB -OB -b {locatit_bed_file} ' \
                    '-o {bam_out} {bam_in} {index_file}' \
                  .format(mem=self.state.config.get_stage_options('run_locatit', 'mem'),
                          locatit_bed_file=self.locatit_bed_file,
