@@ -75,7 +75,7 @@ class Stages(object):
         fastq_read1_in, fastq_read2_in = inputs
         safe_make_dir('processed_fastqs')
 
-        command = 'java -Xmx{mem}g -jar /home/jste0021/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar -fq1 {fastq_read1} -fq2 {fastq_read2} -halo -outloc ./processed_fastqs' \
+        command = 'java -Xmx{mem}g -jar /home/jste0021/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar -fq1 {fastq_read1} -fq2 {fastq_read2} -halo -out_loc ./processed_fastqs' \
                   .format(mem=self.state.config.get_stage_options('run_surecalltrimmer', 'mem'),
                           fastq_read1=fastq_read1_in,
                           fastq_read2=fastq_read2_in)
