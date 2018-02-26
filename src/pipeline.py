@@ -29,7 +29,7 @@ def make_pipeline(state):
         input=output_from('original_fastqs'),
         filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+)_R1.fastq.gz'),
         add_inputs=add_inputs(
-            '.+/{sample[0]}_R2.fastq.gz'),
+            '{path[0]}/{sample[0]}_R2.fastq.gz'),
 
         output='["processed_fastqs/{sample[0]}_R1_processed.fastq.gz", "processed_fastqs/{sample[0]}_R2_processed.fastq.gz"]')
     
