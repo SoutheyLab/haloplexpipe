@@ -201,7 +201,7 @@ def make_pipeline(state):
         filter=suffix('.raw.annotate.filtered.merged.split_multi.vcf'),
         add_inputs=add_inputs(['variants/undr_rover/combined_undr_rover.vcf.gz']),
         output='.raw.annotate.filtered.merged.split_multi.vep.vcf')
-        .follows('index_final_vcf'))
+        .follows('left_align_split_multi_allelics'))
 
 
     return pipeline
