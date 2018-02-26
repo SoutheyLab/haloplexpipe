@@ -27,9 +27,9 @@ def make_pipeline(state):
         task_func=stages.run_surecalltrimmer,
         name='run_surecalltrimmer',
         input=output_from('original_fastqs'),
-        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+)_R1_(?P<lib>[a-zA-Z0-9-:]+).fastq.gz'),
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+)_R1.fastq.gz'),
         add_inputs=add_inputs(
-            '.+/{sample[0]}_R2_{lib[0]}.fastq.gz'),
+            '.+/{sample[0]}_R2.fastq.gz'),
 
         output='["processed_fastqs/{sample[0]}_R1_processed.fastq.gz", "processed_fastqs/{sample[0]}_R2_processed.fastq.gz"]')
     
