@@ -52,17 +52,7 @@ def make_pipeline(state):
         filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).+'),
         #filter=regex(r'.+/([a-zA-Z0-9_-]+).+'),
         add_inputs=add_inputs('data_from_share/{sample[0]}_I2.fastq.gz'),
-        output='alignments/{sample[0]}.locatit.bam',
-
-#    filter=regex(r'.+/(.+BS\d{4,6}.+S\d+)\..+\.txt'),
-#        output=r'all_sample.summary.\1.txt',
-#        extras=[r'\1', 'all_sample.summary.txt'])
-
-
-
-
-
-
+        output='alignments/{sample[0]}.locatit.bam')
 
     # index bam file
     pipeline.transform(
