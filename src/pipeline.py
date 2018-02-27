@@ -49,11 +49,11 @@ def make_pipeline(state):
         task_func=stages.run_locatit,
         name='run_locatit',
         input=output_from('align_bwa', 'original_fastqs'),
-        #filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam'),
-        filter=regex(r'.+/([a-zA-Z0-9_-]+).+'),
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).+'),
+        #filter=regex(r'.+/([a-zA-Z0-9_-]+).+'),
         #add_inputs=add_inputs(r'.+/\1_I2.fastq.gz'),
-        output=r'alignments/\1.locatit.bam',
-        extras=r'\1')
+        output='alignments/{sample[0]}.locatit.bam',
+        extras=['{sample[0]}']
 
 #    filter=regex(r'.+/(.+BS\d{4,6}.+S\d+)\..+\.txt'),
 #        output=r'all_sample.summary.\1.txt',
