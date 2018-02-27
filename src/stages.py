@@ -114,6 +114,7 @@ class Stages(object):
                          bam_in=bam_in,
                          bam_out=bam_out,
                          index_file=index_file)
+        run_stage(self.state, 'run_locatit', command)
 
 
     def index_sort_bam_picard(self, bam_in, bam_index):
