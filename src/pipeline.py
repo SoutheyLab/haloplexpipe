@@ -46,7 +46,7 @@ def make_pipeline(state):
         extras=['{sample[0]}'],
         output='alignments/{sample[0]}.bam')
 
-     #Run locatit from agilent.  this should produce sorted bam files, so no sorting needed at the next step
+    #Run locatit from agilent.  this should produce sorted bam files, so no sorting needed at the next step
     pipeline.transform(
         task_func=stages.run_locatit,
         name='run_locatit',
