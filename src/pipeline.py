@@ -28,7 +28,7 @@ def make_pipeline(state):
         name='run_surecalltrimmer',
         input=output_from('original_fastqs'),
         filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+)_R1.fastq.gz'),
-        add_inputs=add_inputs(
+        add_inputs=add_inputs
             '{path[0]}/{sample[0]}_R2.fastq.gz'),
         extras=['{sample[0]}'],
         # output only needs to know about one file to track progress of the pipeline, but the second certainly exists after this step.
@@ -51,7 +51,7 @@ def make_pipeline(state):
         name='run_locatit',
         input=output_from('align_bwa', ['original_fastqs']),
         filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam'),
-        add_inputs=add_inputs(['.+/{sample[0]}_I2.fastq.gz']),
+        add_inputs='[input=output_from('original_fastqs'), filter=formatter('.+/{sample[0]}_I2.fastq.gz')]',
         output='alignments/{sample[0]}.locatit.bam')
     
     # index bam file
