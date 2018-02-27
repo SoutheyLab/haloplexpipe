@@ -104,17 +104,32 @@ class Stages(object):
                           bam=bam_out)
         run_stage(self.state, 'align_bwa', command)
 
-    def run_locatit(self, inputs, bam_out):
-        bam_in, [index_file] = inputs
-        command = '{bam_in}; java -Xmx{mem}G -jar /home/jste0021/vh83/local_software/agent/LocatIt_v4.0.1.jar -q 25 -m 1 -U -IB -OB -b {locatit_bed_file} ' \
-                  '-o {bam_out} {bam_in} {index_file}' \
-                  .format(mem=self.state.config.get_stage_options('run_locatit', 'mem'),
-                         locatit_bed_file=self.locatit_bed_file,
-                         bam_in=bam_in,
-                         bam_out=bam_out,
-                         index_file=index_file)
-        run_stage(self.state, 'run_locatit', command)
+#    def run_locatit(self, inputs, bam_out):
+#        bam_in, [index_file] = inputs
+#        command = '{bam_in}; java -Xmx{mem}G -jar /home/jste0021/vh83/local_software/agent/LocatIt_v4.0.1.jar -q 25 -m 1 -U -IB -OB -b {locatit_bed_file} ' \
+#                  '-o {bam_out} {bam_in} {index_file}' \
+#                  .format(mem=self.state.config.get_stage_options('run_locatit', 'mem'),
+#                         locatit_bed_file=self.locatit_bed_file,
+#                         bam_in=bam_in,
+#                         bam_out=bam_out,
+#                         index_file=index_file)
+#        run_stage(self.state, 'run_locatit', command)
 
+    def run_locatit(self, inputs, bam_out, sample):
+        for inputfile in inputs:
+            if inputfile.endswith('.bam'):
+                a = inputfile
+            elif inputfile.endswith('_I2.fastq.gz')  and inputfile.startswith('{sample}').format(sample=sample):
+                b = inputfile
+        command='java -Xmx{mem}G -jar /home/jste0021/vh83/local_software/agent/LocatIt_v4.0.1.jar -q 25 -m 1 -U -IB -OB -b {locatit_bed_file} ' \
+                '-o {bam_out} {bam_in} {index_file}' \
+                .format(mem=self.state.config.get_stage_options('run_locatit', 'mem'),
+                         locatit_bed_file=self.locatit_bed_file,
+                         bam_in=b,
+                         bam_out=bam_out,
+                         index_file=c)
+        run_stage(self.state, 'run_locatit', command)
+     
 
     def index_sort_bam_picard(self, bam_in, bam_index):
         '''Index sorted bam using samtools'''
