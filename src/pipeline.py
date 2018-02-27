@@ -51,7 +51,7 @@ def make_pipeline(state):
         input=output_from('align_bwa', 'original_fastqs'),
         #filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam'),
         filter=regex(r'.+([a-zA-Z0-9_-]+).bam'),
-        add_inputs=add_inputs('.+/\1_I2.fastq.gz'),
+        add_inputs=add_inputs(r'.+/\1_I2.fastq.gz'),
         output='alignments/{sample[0]}.locatit.bam')
     
 #    filter=regex(r'.+/(.+BS\d{4,6}.+S\d+)\..+\.txt'),
