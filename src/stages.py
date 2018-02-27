@@ -106,7 +106,7 @@ class Stages(object):
 
     def run_locatit(self, inputs, bam_out):
         bam_in = inputs
-        index_file = damnit
+        index_file = 10
         command = 'echo({bam_in}; java -Xmx{mem}G -jar /home/jste0021/vh83/local_software/agent/LocatIt_v4.0.1.jar -q 25 -m 1 -U -IB -OB -b {locatit_bed_file} ' \
                   '-o {bam_out} {bam_in} {index_file}' \
                   .format(mem=self.state.config.get_stage_options('run_locatit', 'mem'),
