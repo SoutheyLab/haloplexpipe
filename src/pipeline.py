@@ -48,11 +48,22 @@ def make_pipeline(state):
     pipeline.transform(
         task_func=stages.run_locatit,
         name='run_locatit',
-        input=output_from('align_bwa', ['original_fastqs']),
-        filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam'),
-        add_inputs=add_inputs(['.+/{sample[0]}_I2.fastq.gz', 'original_fastqs']),
+        input=output_from('align_bwa', 'original_fastqs'),
+        #filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam'),
+        filter=regex(r'.+([a-zA-Z0-9_-]+).bam'),
+        add_inputs=add_inputs('.+/\1_I2.fastq.gz'),
         output='alignments/{sample[0]}.locatit.bam')
     
+#    filter=regex(r'.+/(.+BS\d{4,6}.+S\d+)\..+\.txt'),
+#        output=r'all_sample.summary.\1.txt',
+#        extras=[r'\1', 'all_sample.summary.txt'])
+
+
+
+
+
+
+
     # index bam file
     pipeline.transform(
         task_func=stages.index_sort_bam_picard,
