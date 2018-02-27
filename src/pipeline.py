@@ -53,7 +53,7 @@ def make_pipeline(state):
         #filter=regex(r'.+/([a-zA-Z0-9_-]+).+'),
         #add_inputs=add_inputs(r'.+/\1_I2.fastq.gz'),
         output='alignments/{sample[0]}.locatit.bam',
-        extras=['{sample[0]}']
+        extras=['{sample[0]}'])
 
 #    filter=regex(r'.+/(.+BS\d{4,6}.+S\d+)\..+\.txt'),
 #        output=r'all_sample.summary.\1.txt',
