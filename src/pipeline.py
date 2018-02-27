@@ -50,7 +50,7 @@ def make_pipeline(state):
         name='run_locatit',
         input=output_from('align_bwa', ['original_fastqs']),
         filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam'),
-        add_inputs=add_inputs('.+/{sample[0]}_I2.fastq.gz', 'original_fastqs'),
+        add_inputs=add_inputs(['.+/{sample[0]}_I2.fastq.gz', 'original_fastqs']),
         output='alignments/{sample[0]}.locatit.bam')
     
     # index bam file
