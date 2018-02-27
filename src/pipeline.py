@@ -46,11 +46,11 @@ def make_pipeline(state):
         output='alignments/{sample[0]}.bam')
 
     #Run locatit from agilent.  this should produce sorted bam files, so no sorting needed at the next step
-    pipeline.merge(
+    pipeline.transform(
         task_func=stages.run_locatit,
         name='run_locatit',
-        input=output_from(['align_bwa', 'original_fastqs']),
-        filter=formatter(['alignments/(?P<sample>[a-zA-Z0-9_-]+).bam', './(?P<sample2>[a-zA-Z0-9_-]+)_I2.fastq.gz']),
+        input=output_from('align_bwa', ['original_fastqs']),
+        filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam', ['./(?P<sample2>[a-zA-Z0-9_-]+)_I2.fastq.gz']),
         #add_inputs=add_inputs(['{sample[0]}_I2.fastq.gz']),
         output='alignments/{sample[0]}.locatit.bam')
     
