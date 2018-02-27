@@ -51,7 +51,7 @@ def make_pipeline(state):
         task_func=stages.run_locatit,
         name='run_locatit',
         input=output_from('align_bwa', 'original_fastqs'),
-        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).bam'),
+        filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam'),
         #this is hacky at the moment and i'd like to hardcode the path to the I2 files.  maybe in the config file as a separate variable?
         add_inputs=add_inputs('{locatit_index_path}/{sample[0]}_I2.fastq.gz'),
         output='alignments/{sample[0]}.locatit.bam')
