@@ -48,7 +48,7 @@ def make_pipeline(state):
     pipeline.transform(
         task_func=stages.run_locatit,
         name='run_locatit',
-        input=output_from('align_bwa', ['original_fastqs']),
+        input=output_from('align_bwa'),
         filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam'),
         add_inputs=add_inputs(output_from('original_fastqs'), formatter('.+/{sample[0]}_I2.fastq.gz')),
         output='alignments/{sample[0]}.locatit.bam')
