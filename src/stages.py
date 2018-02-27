@@ -74,8 +74,8 @@ class Stages(object):
         '''Run SurecallTrimmer on the raw reads'''
         fastq_read1_in, fastq_read2_in = inputs
         safe_make_dir('processed_fastqs')
-
-        command = 'java -Xmx{mem}g -jar /home/jste0021/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar ' \
+        #need to make the path to this .jar file a variable in config file
+        command = 'java -Xmx{mem}g -jar /projects/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar ' \
                                    '-fq1 {fastq_read1} -fq2 {fastq_read2} -halo -out_loc ./processed_fastqs; ' \
                                    'mv ./processed_fastqs/{sample}_R1.fastq.gz* ./processed_fastqs/{sample}_R1.processed.fastq.gz; ' \
                                    'mv ./processed_fastqs/{sample}_R2.fastq.gz* ./processed_fastqs/{sample}_R2.processed.fastq.gz' \
@@ -106,7 +106,8 @@ class Stages(object):
 
     def run_locatit(self, inputs, bam_out):
         bam_in, index_file = inputs
-        command = 'java -Xmx{mem}G -jar /home/jste0021/vh83/local_software/agent/LocatIt_v4.0.1.jar -q 25 -m 1 -U -IB -OB -b {locatit_bed_file} ' \
+        #need to make the path to this .jar file a variable in config file
+        command = 'java -Xmx{mem}G -jar /projects/vh83/local_software/agent/LocatIt_v4.0.1.jar -q 25 -m 1 -IB -OB -b {locatit_bed_file} ' \
                   '-o {bam_out} {bam_in} {index_file}' \
                   .format(mem=self.state.config.get_stage_options('run_locatit', 'mem'),
                          locatit_bed_file=self.locatit_bed_file,
@@ -114,22 +115,6 @@ class Stages(object):
                          bam_out=bam_out,
                          index_file=index_file)
         run_stage(self.state, 'run_locatit', command)
-
-#    def run_locatit(self, inputs, bam_out, sample):
-#        for inputfile in inputs:
-#            if inputfile.endswith('.bam'):
-#                a = inputfile
-#            elif inputfile.endswith('_I2.fastq.gz')  and inputfile.startswith('{sample}').format(sample=sample):
-#                b = inputfile
-#        command='java -Xmx{mem}G -jar /home/jste0021/vh83/local_software/agent/LocatIt_v4.0.1.jar -q 25 -m 1 -U -IB -OB -b {locatit_bed_file} ' \
-#                '-o {bam_out} {bam_in} {index_file}' \
-#                .format(mem=self.state.config.get_stage_options('run_locatit', 'mem'),
-#                         locatit_bed_file=self.locatit_bed_file,
-#                         bam_in=b,
-#                         bam_out=bam_out,
-#                         index_file=c)
-#        run_stage(self.state, 'run_locatit', command)
-     
 
     def index_sort_bam_picard(self, bam_in, bam_index):
         '''Index sorted bam using samtools'''
