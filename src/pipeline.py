@@ -52,32 +52,39 @@ def make_pipeline(state):
         name='run_locatit',
         input=output_from('align_bwa', 'original_fastqs'),
         filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam'),
-        #this is hacky at the moment and i'd like to hardcode the path to the I2 files.  maybe in the config file as a separate variable?
+        #this is hacky at the moment and i'd like to read the path from a variable.
         add_inputs=add_inputs('data_from_share/{sample[0]}_I2.fastq.gz'),
         output='alignments/{sample[0]}.locatit.bam')
+    
+    pipeline.transform(
+        task_func=stages.sort_bam,
+        name='sort_bam'
+        input=output_from('run_locatit'),
+        filter=suffix('.locatit.bam'),
+        output='.sorted.locatit.bam')        
 
     # index bam file
     pipeline.transform(
         task_func=stages.index_sort_bam_picard,
         name='index_bam',
-        input=output_from('run_locatit'),
-        filter=suffix('.locatit.bam'),
-        output='.locatit.bam.bai')
+        input=output_from('sort_bam'),
+        filter=suffix('.sorted.locatit.bam'),
+        output='.sorted.locatit.bam.bai')
 
     # generate mapping metrics.
     pipeline.transform(
         task_func=stages.generate_amplicon_metrics,
         name='generate_amplicon_metrics',
         input=output_from('run_locatit'),
-        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).locatit.bam'),
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).sorted.locatit.bam'),
         output='alignments/metrics/{sample[0]}.amplicon-metrics.txt',
         extras=['{sample[0]}'])
 
     pipeline.transform(
         task_func=stages.intersect_bed,
         name='intersect_bed',
-        input=output_from('run_locatit'),
-        filter=suffix('.locatit.bam'),
+        input=output_from('sort_bam'),
+        filter=suffix('.sorted.locatit.bam'),
         output='.intersectbed.bam')
 
     pipeline.transform(
@@ -90,8 +97,8 @@ def make_pipeline(state):
     pipeline.transform(
         task_func=stages.genome_reads,
         name='genome_reads',
-        input=output_from('run_locatit'),
-        filter=suffix('.locatit.bam'),
+        input=output_from('sort_bam'),
+        filter=suffix('.sorted.locatit.bam'),
         output='.mapped_to_genome.txt')
 
     pipeline.transform(
@@ -104,8 +111,8 @@ def make_pipeline(state):
     pipeline.transform(
         task_func=stages.total_reads,
         name='total_reads',
-        input=output_from('run_locatit'),
-        filter=suffix('.locatit.bam'),
+        input=output_from('sort_bam'),
+        filter=suffix('.sorted.locatit.bam'),
         output='.total_raw_reads.txt')
 
     pipeline.collate(
@@ -121,8 +128,8 @@ def make_pipeline(state):
     (pipeline.transform(
         task_func=stages.call_haplotypecaller_gatk,
         name='call_haplotypecaller_gatk',
-        input=output_from('run_locatit'),
-        filter=formatter('.+/(?P<sample>[a-zA-Z0-9-_]+).locatit.bam'),
+        input=output_from('sort_bam'),
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9-_]+)sorted.locatit.bam'),
         output='variants/gatk/{sample[0]}.g.vcf')
         .follows('index_sort_bam_picard'))
 
@@ -202,7 +209,6 @@ def make_pipeline(state):
         name='apply_vep',
         input=output_from('left_align_split_multi_allelics'),
         filter=suffix('.raw.annotate.filtered.merged.split_multi.vcf'),
-        add_inputs=add_inputs(['variants/undr_rover/combined_undr_rover.vcf.gz']),
         output='.raw.annotate.filtered.merged.split_multi.vep.vcf')
         .follows('left_align_split_multi_allelics'))
 

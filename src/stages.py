@@ -117,11 +117,10 @@ class Stages(object):
                          index_file=index_file)
         run_stage(self.state, 'run_locatit', command)
 
-    def samtools_sort(self, input, bam_out):
+    def sort_bam(self, input, bam_out):
         '''sort the locatit bam files'''
-        
-
-
+        command = 'samtools sort -o {bam_out} {input}'.format(input=input, bam_out=bam_out)
+        run_stage(self.state, 'sort_bam', command)
 
 
     def index_sort_bam_picard(self, bam_in, bam_index):
