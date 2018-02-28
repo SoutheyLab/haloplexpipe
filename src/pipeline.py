@@ -15,8 +15,6 @@ def make_pipeline(state):
     # Stages are dependent on the state
     stages = Stages(state)
 
-    locatit_index_path = state.config.get_option('locatit_index_path')
-
     # The original FASTQ files
     # This is a dummy stage. It is useful because it makes a node in the
     # pipeline graph, and gives the pipeline an obvious starting point.
