@@ -295,9 +295,9 @@ class Stages(object):
         self.run_gatk('left_align_split_multi_allelics', gatk_args)
 
 
-    def apply_vep(self, inputs, vcf_out):
+    def apply_vep(self, input, vcf_out):
         '''Apply VEP'''
-        vcf_in, [undr_rover_vcf] = inputs
+        vcf_in = input
         cores = self.get_stage_options('apply_vep', 'cores')
         vep_command = "vep --cache --dir_cache {other_vep} " \
                       "--assembly GRCh37 --refseq --offline " \
