@@ -127,7 +127,7 @@ def make_pipeline(state):
         task_func=stages.call_haplotypecaller_gatk,
         name='call_haplotypecaller_gatk',
         input=output_from('sort_bam'),
-        filter=formatter('.+/(?P<sample>[a-zA-Z0-9-_]+)sorted.locatit.bam'),
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9-_]+).sorted.locatit.bam'),
         output='variants/gatk/{sample[0]}.g.vcf')
         .follows('index_sort_bam_picard'))
 
