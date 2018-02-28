@@ -95,7 +95,7 @@ class Stages(object):
         read_group = '"@RG\\tID:{sample}\\tSM:{sample}\\tPU:lib1\\tPL:Illumina"' \
             .format(sample=sample_id)
         command = 'bwa mem -M -t {cores} -R {read_group} {reference} {fastq_read1} {fastq_read2} ' \
-                  '| samtools view -uh  - | samtools sort -o {bam_out}' \
+                  '| samtools view -uh  - | samtools sort -o {bam}' \
                   .format(cores=cores,
                           read_group=read_group,
                           fastq_read1=fastq_read1_in,
