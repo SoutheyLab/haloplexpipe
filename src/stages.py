@@ -95,7 +95,7 @@ class Stages(object):
         read_group = '"@RG\\tID:{sample}\\tSM:{sample}\\tPU:lib1\\tPL:Illumina"' \
             .format(sample=sample_id)
         command = 'bwa mem -M -t {cores} -R {read_group} {reference} {fastq_read1} {fastq_read2} ' \
-                  '| samtools view -b -h -o {bam} -' \
+                  '| samtools view -uh  - | samtools sort -o {bam_out}' \
                   .format(cores=cores,
                           read_group=read_group,
                           fastq_read1=fastq_read1_in,
@@ -103,6 +103,7 @@ class Stages(object):
                           reference=self.reference,
                           bam=bam_out)
         run_stage(self.state, 'align_bwa', command)
+
 
     def run_locatit(self, inputs, bam_out):
         bam_in, index_file = inputs
@@ -115,6 +116,13 @@ class Stages(object):
                          bam_out=bam_out,
                          index_file=index_file)
         run_stage(self.state, 'run_locatit', command)
+
+    def samtools_sort(self, input, bam_out):
+        '''sort the locatit bam files'''
+        
+
+
+
 
     def index_sort_bam_picard(self, bam_in, bam_index):
         '''Index sorted bam using samtools'''
