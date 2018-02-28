@@ -58,7 +58,7 @@ def make_pipeline(state):
     
     pipeline.transform(
         task_func=stages.sort_bam,
-        name='sort_bam'
+        name='sort_bam',
         input=output_from('run_locatit'),
         filter=suffix('.locatit.bam'),
         output='.sorted.locatit.bam')        
