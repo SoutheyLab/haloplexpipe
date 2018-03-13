@@ -139,7 +139,7 @@ def make_pipeline(state):
         output='.raw.vcf')
 
     # Apply GT filters to genotyped vcf
-        pipeline.transform(
+    pipeline.transform(
         task_func=stages.genotype_filter_gatk,
         name='genotype_filter_gatk',
         input=output_from('genotype_gvcf_gatk'),
@@ -147,7 +147,7 @@ def make_pipeline(state):
         output='.raw.gt-filter.vcf')
 
     # Decompose and normalise multiallelic sites
-        pipeline.transform(
+    pipeline.transform(
         task_func=stages.vt_decompose_normalise,
         name='vt_decompose_normalise',
         input=output_from('genotype_filter_gatk'),
@@ -155,7 +155,7 @@ def make_pipeline(state):
         output='.raw.gt-filter.decomp.norm.vcf')
 
     # Annotate VCF file using GATK
-        pipeline.transform(
+    pipeline.transform(
         task_func=stages.variant_annotator_gatk,
         name='variant_annotator_gatk',
         input=output_from('vt_decompose_normalise'),
