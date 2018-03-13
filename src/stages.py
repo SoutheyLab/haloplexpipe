@@ -194,7 +194,7 @@ class Stages(object):
                     "-G_filterName \"LowDP\"".format(reference=self.reference,
                                                     vcf_in=vcf_in,
                                                     vcf_out=vcf_out)
-                   self.run_gatk('genotype_filter_gatk', gatk_args)
+        self.run_gatk('genotype_filter_gatk', gatk_args)
 
 
     def vt_decompose_normalise(self, vcf_in, vcf_out):
