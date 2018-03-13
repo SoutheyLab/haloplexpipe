@@ -12,10 +12,6 @@ from runner import run_stage
 import os
 import math
 
-PICARD_JAR = '/usr/local/picard/2.9.2/picard.jar'
-SNPEFF_JAR = '/usr/local/easybuild/software/snpEff/4.1d-Java-1.7.0_80/snpEff.jar'
-
-GATK_JAR = '/usr/local/gatk/3.7/executable/GenomeAnalysisTK.jar'
 
 def java_command(jar_path, mem_in_gb, command_args):
     '''Build a string for running a java command'''
@@ -33,12 +29,7 @@ class Stages(object):
     def __init__(self, state):
         self.state = state
         self.reference = self.get_options('ref_grch37')
-        self.dbsnp_hg19 = self.get_options('dbsnp_hg19')
-        self.mills_hg19 = self.get_options('mills_hg19')
-        self.one_k_g_snps = self.get_options('one_k_g_snps')
-        self.one_k_g_indels = self.get_options('one_k_g_indels')
-        self.one_k_g_highconf_snps = self.get_options('one_k_g_highconf_snps')
-        self.hapmap = self.get_options('hapmap')
+        self.dbsnp_b37 = self.get_options('dbsnp_b37')
         self.interval_file = self.get_options('interval_file')
         self.other_vep = self.get_options('other_vep')
         self.brcaex = self.get_options('vep_brcaex')
@@ -50,15 +41,11 @@ class Stages(object):
         self.dbscsnv = self.get_options('vep_dbscsnv')
         self.cadd = self.get_options('vep_cadd')
         self.locatit_bed_file = self.get_options('locatit_bedfile')
-
-
-    def run_picard(self, stage, args):
-        mem = int(self.state.config.get_stage_options(stage, 'mem'))
-        return run_java(self.state, stage, PICARD_JAR, mem, args)
+        self.gatk_jar=self.get_options('gatk_jar')
 
     def run_gatk(self, stage, args):
         mem = int(self.state.config.get_stage_options(stage, 'mem'))
-        return run_java(self.state, stage, GATK_JAR, mem, args)
+        return run_java(self.state, stage, self.gatk_jar, mem, args)
 
     def get_stage_options(self, stage, *options):
         return self.state.config.get_stage_options(stage, *options)
@@ -119,20 +106,15 @@ class Stages(object):
 
     def sort_bam(self, input, bam_out):
         '''sort the locatit bam files'''
-        command = 'samtools sort -o {bam_out} {input}'.format(input=input, bam_out=bam_out)
+        command = 'samtools sort -o {bam_out} {input}; samtools index {bam_out}'.format(input=input, bam_out=bam_out)
         run_stage(self.state, 'sort_bam', command)
 
-
-    def index_sort_bam_picard(self, bam_in, bam_index):
-        '''Index sorted bam using samtools'''
-        command = 'samtools index {bam_in} {bam_index}'.format(
-                          bam_in=bam_in, bam_index=bam_index)
-        run_stage(self.state, 'index_sort_bam_picard', command)
 
     ##########
     def call_haplotypecaller_gatk(self, bam_in, vcf_out):
         '''Call variants using GATK'''
         safe_make_dir('variants/gatk')
+        cores = self.get_stage_options('call_haplotypecaller_gatk', 'cores')
         gatk_args = "-T HaplotypeCaller -R {reference} --min_base_quality_score 20 " \
                     "--emitRefConfidence GVCF " \
                     "-A AlleleBalance -A AlleleBalanceBySample " \
@@ -148,8 +130,10 @@ class Stages(object):
                     "-A SampleList -A SpanningDeletions " \
                     "-A StrandBiasBySample -A StrandOddsRatio " \
                     "-A TandemRepeatAnnotator -A VariantType " \
+                    "-nct {cores}" \
                     "-I {bam} -L {interval_list} -o {out}".format(reference=self.reference,
-                                                                  bam=bam_in, interval_list=self.interval_file, out=vcf_out)
+                                                                  bam=bam_in, interval_list=self.interval_file,
+                                                                  out=vcf_out, cores=cores)
         self.run_gatk('call_haplotypecaller_gatk', gatk_args)
 
     def combine_gvcf_gatk(self, vcf_files_in, vcf_out):
@@ -164,7 +148,7 @@ class Stages(object):
             gatk_args_full = "java -Xmx{mem}g -jar {jar_path} -T CombineGVCFs -R {reference} " \
                              "--disable_auto_index_creation_and_locking_when_reading_rods " \
                              "{g_vcf_files} -o {vcf_out}; ".format(reference=self.reference, 
-                                                                   jar_path=GATK_JAR, 
+                                                                   jar_path=self.gatk_jar, 
                                                                    mem=self.state.config.get_stage_options('combine_gvcf_gatk', 'mem'), 
                                                                    g_vcf_files=filelist_command, 
                                                                    vcf_out=temp_merge_filename)
@@ -175,7 +159,7 @@ class Stages(object):
         gatk_args_full_final = "java -Xmx{mem}g -jar {jar_path} -T CombineGVCFs -R {reference} " \
                                "--disable_auto_index_creation_and_locking_when_reading_rods " \
                                "{g_vcf_files} -o {vcf_out}".format(reference=self.reference, 
-                                                                   jar_path=GATK_JAR, 
+                                                                   jar_path=self.gatk_jar, 
                                                                    mem=self.state.config.get_stage_options('combine_gvcf_gatk', 'mem'), 
                                                                    g_vcf_files=final_merge_vcfs, 
                                                                    vcf_out=vcf_out)
@@ -191,9 +175,35 @@ class Stages(object):
                     "--disable_auto_index_creation_and_locking_when_reading_rods " \
                     "--dbsnp {dbsnp} " \
                     "--num_threads {cores} --variant {combined_vcf} --out {vcf_out}" \
-                    .format(reference=self.reference, dbsnp=self.dbsnp_hg19,
+                    .format(reference=self.reference, dbsnp=self.dbsnp_b37,
                             cores=cores, combined_vcf=combined_vcf_in, vcf_out=vcf_out)
         self.run_gatk('genotype_gvcf_gatk', gatk_args)
+
+
+    def genotype_filter_gatk(self, vcf_in, vcf_out):
+        '''Apply GT filters to the genotyped VCF'''
+        gatk_args = "-T VariantFiltration -R {reference} " \
+                    "-V {vcf_in} " \
+                    "-o {vcf_out} " \
+                    "-G_filter \"g.isHetNonRef() == 1\" " \
+                    "-G_filterName \"HetNonRef\" " \
+                    "-G_filter \"g.isHet() == 1 && g.isHetNonRef() != 1 && " \
+                    "1.0 * AD[vc.getAlleleIndex(g.getAlleles().1)] / (DP * 1.0) < 0.25\" " \
+                    "-G_filterName \"AltFreqLow\" " \
+                    "-G_filter \"DP < 50.0\" " \
+                    "-G_filterName \"LowDP\"".format(reference=self.reference,
+                                                    vcf_in=vcf_in,
+                                                    vcf_out=vcf_out)
+                   self.run_gatk('genotype_filter_gatk', gatk_args)
+
+
+    def vt_decompose_normalise(self, vcf_in, vcf_out):
+        '''Decompose multiallelic sites and normalise representations'''
+        command = "vt decompose -s {vcf_in} | vt normalize -r {reference} -o " \
+                  "{vcf_out} -".format(reference=self.reference,
+                                       vcf_in=vcf_in,
+                                       vcf_out=vcf_out)
+        run_stage(self.state, 'vt_decompose_normalise', command)
 
     def variant_annotator_gatk(self, vcf_in, vcf_out):
         '''Annotate G.VCF files using GATK'''
@@ -214,88 +224,41 @@ class Stages(object):
                     "-A StrandBiasBySample -A StrandOddsRatio " \
                     "-A TandemRepeatAnnotator -A VariantType " \
                     "--num_threads {cores} --variant {vcf_in} --out {vcf_out}" \
-                    .format(reference=self.reference, cores=cores, vcf_in=vcf_in, vcf_out=vcf_out)
+                    .format(reference=self.reference, 
+                           cores=cores,
+                           vcf_in=vcf_in,
+                           vcf_out=vcf_out)
         self.run_gatk('variant_annotator_gatk', gatk_args)
 
-    def select_variants_snps_gatk(self, inputs, vcf_out):
-        '''Extract SNPs from genotyped vcf'''
-        vcf_in = inputs
-        gatk_args = "-T SelectVariants " \
-                    "-R {reference} " \
-                    "-V {vcf_in} " \
-                    "-selectType SNP " \
-                    "-o {vcf_out}".format(reference=self.reference, vcf_in=vcf_in, vcf_out=vcf_out)
-        self.run_gatk('select_variants_snps_gatk', gatk_args)
 
-    def select_variants_indels_gatk(self, inputs, vcf_out):
-        '''Extract Indels from genotypes vcf'''
-        vcf_in = inputs
-        gatk_args = "-T SelectVariants " \
-                    "-R {reference} " \
-                    "-V {vcf_in} " \
-                    "-selectType INDEL " \
-                    "-o {vcf_out}".format(reference=self.reference, vcf_in=vcf_in, vcf_out=vcf_out)
-        self.run_gatk('select_variants_indels_gatk', gatk_args)
+ apply_vep(self, ielf, vcf_in, vcf_out):
+         '''Filtering variants (separate filters for SNPs and indels)'''
+                 gatk_args = "-T VariantFiltration " \
+                "--disable_auto_index_creation_and_locking_when_reading_rods " \
+                "-R {reference} " \
+                "-l ERROR " \
+                "--filterExpression \"QUAL < 30.0\" --filterName GNRL_VeryLowQual " \
+               "--filterExpression \"QD < 2.0\" --filterName GNRL_LowQD " \
+               "--filterExpression \"DP < 50\" --filterName GNRL_LowCoverage " \
+               "--filterExpression \"ReadPosRankSum < -20.0\" " \
+               "--filterName GNRL_ReadPosRankSum " \
+               "--filterExpression \"OLD_MULTIALLELIC =~ '.+'\" " \
+               "--filterName MultiAllelicSite " \
+               "--filterExpression \"VariantType == 'SNP' && MQ < 30.0\" " \
+               "--filterName SNP_LowMappingQual " \
+               "--filterExpression \"VariantType == 'SNP' && SOR > 3.0\" " \
+               "--filterName SNP_StrandBias " \
+               "--filterExpression \"VariantType == 'SNP' && MQRankSum < -12.5\" " \
+               "--filterName SNP_MQRankSum " \
+               "--filterExpression \"VariantType == 'SNP' && ReadPosRankSum < -8.0\" " \
+               "--filterName SNP_ReadPosRankSum " \
+               "--variant {vcf_in} " \
+               "-o {vcf_out}".format(vcf_in=vcf_in,
+               vcf_out=vcf_out,
+               reference=self.reference)
+               self.run_gatk('gatk_filter', gatk_args)
 
-    def apply_variant_filtration_snps_gatk(self, inputs, vcf_out):
-        '''Apply Variant Filtration using gatk'''
-        vcf_in = inputs
-        cores = self.get_stage_options('apply_variant_filtration_gatk', 'cores')
-        gatk_args = "-T VariantFiltration --disable_auto_index_creation_and_locking_when_reading_rods " \
-                    "-R {reference} " \
-                    "--filterExpression \"QUAL < 30.0\" --filterName \"VeryLowQual\" " \
-                    "--filterExpression \"QD < 2.0\" --filterName \"LowQD\" " \
-                    "--filterExpression \"DP < 10\" --filterName \"LowCoverage\" " \
-                    "--filterExpression \"MQ < 30.0\" --filterName \"LowMappingQual\" " \
-                    "--filterExpression \"SOR > 3.0\" --filterName \"StrandBias\" " \
-                    "--filterExpression \"MQRankSum < -12.5\" --filterName \"MQRankSum\" " \
-                    "--filterExpression \"ReadPosRankSum < -8.0\" --filterName \"ReadPosRankSum\" " \
-                    "--variant {vcf_in} -o {vcf_out}".format(reference=self.reference,
-                                                            cores=cores, vcf_in=vcf_in, vcf_out=vcf_out)
-        self.run_gatk('apply_variant_filtration_snps_gatk', gatk_args)
-
-    def apply_variant_filtration_indels_gatk(self, inputs, vcf_out):
-        '''Apply Variant Filtration using gatk'''
-        vcf_in = inputs
-        cores = self.get_stage_options('apply_variant_filtration_gatk', 'cores')
-        gatk_args = "-T VariantFiltration --disable_auto_index_creation_and_locking_when_reading_rods " \
-                    "-R {reference} " \
-                    "--filterExpression \"QUAL < 30.0\" --filterName \"VeryLowQual\" " \
-                    "--filterExpression \"QD < 2.0\" --filterName \"LowQD\" " \
-                    "--filterExpression \"DP < 10\" --filterName \"LowCoverage\" " \
-                    "--filterExpression \"ReadPosRankSum < -20.0\" --filterName \"ReadPosRankSum\" " \
-                    "--variant {vcf_in} -o {vcf_out}".format(reference=self.reference,
-                                                            cores=cores, vcf_in=vcf_in, vcf_out=vcf_out)
-        self.run_gatk('apply_variant_filtration_indels_gatk', gatk_args)
-
-    def merge_filtered_vcfs_gatk(self, inputs, vcf_out):
-        '''Merge filtered vcfs, snps and indels'''
-        snps_vcf, [indels_vcf] = inputs
-        gatk_args = "-T CombineVariants " \
-                    "-R {reference} " \
-                    "-V:2 {snps_vcf} " \
-                    "-V:1 {indels_vcf} " \
-                    "-o {vcf_out} " \
-                    "-genotypeMergeOptions PRIORITIZE " \
-                    "-priority 1,2".format(reference=self.reference, snps_vcf=snps_vcf, indels_vcf=indels_vcf, 
-                                           vcf_out=vcf_out)
-        self.run_gatk('merge_filtered_vcfs_gatk', gatk_args)
-    
-    def left_align_split_multi_allelics(self, inputs, vcf_out):
-        '''Split multi allelic sites and left align variants'''
-        vcf_in = inputs
-        gatk_args = "-T LeftAlignAndTrimVariants " \
-                    "-R {reference} " \
-                    "-V {vcf_in} " \
-                    "-o {vcf_out} " \
-                    "--dontTrimAlleles " \
-                    "--splitMultiallelics ".format(reference=self.reference, 
-                                                   vcf_in=vcf_in, 
-                                                   vcf_out=vcf_out)
-        self.run_gatk('left_align_split_multi_allelics', gatk_args)
-
-
-    def apply_vep(self, input, vcf_out):
+    def apply_vep(self, inputs, vcf_out):
         '''Apply VEP'''
         vcf_in = input
         cores = self.get_stage_options('apply_vep', 'cores')
@@ -304,7 +267,9 @@ class Stages(object):
                       "--fasta {reference} " \
                       "--sift b --polyphen b --symbol --numbers --biotype --total_length --hgvs --format vcf " \
                       "--vcf --force_overwrite --flag_pick --no_stats " \
-                      "--custom {brcaexpath},brcaex,vcf,exact,0,Clinical_significance_ENIGMA,Comment_on_clinical_significance_ENIGMA,Date_last_evaluated_ENIGMA,Pathogenicity_expert,HGVS_cDNA,HGVS_Protein,BIC_Nomenclature " \
+                      "--custom {brcaexpath},brcaex,vcf,exact,0,Clinical_significance_ENIGMA," \
+                      "Comment_on_clinical_significance_ENIGMA,Date_last_evaluated_ENIGMA," \
+                      "Pathogenicity_expert,HGVS_cDNA,HGVS_Protein,BIC_Nomenclature " \
                       "--custom {gnomadpath},gnomAD,vcf,exact,0,AF_NFE,AN_NFE " \
                       "--custom {revelpath},RVL,vcf,exact,0,REVEL_SCORE " \
                       "--plugin MaxEntScan,{maxentscanpath} " \
