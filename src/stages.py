@@ -130,7 +130,7 @@ class Stages(object):
                     "-A SampleList -A SpanningDeletions " \
                     "-A StrandBiasBySample -A StrandOddsRatio " \
                     "-A TandemRepeatAnnotator -A VariantType " \
-                    "-nct {cores}" \
+                    "-nct {cores} " \
                     "-I {bam} -L {interval_list} -o {out}".format(reference=self.reference,
                                                                   bam=bam_in, interval_list=self.interval_file,
                                                                   out=vcf_out, cores=cores)
