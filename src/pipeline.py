@@ -121,7 +121,7 @@ def make_pipeline(state):
         input=output_from('sort_bam'),
         filter=formatter('.+/(?P<sample>[a-zA-Z0-9-_]+).sorted.locatit.bam'),
         output='variants/gatk/{sample[0]}.g.vcf')
-        .follows('index_sort_bam_picard'))
+        .follows('sort.bam'))
 
     # Combine G.VCF files for all samples using GATK
     pipeline.merge(
