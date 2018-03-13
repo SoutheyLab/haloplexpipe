@@ -231,32 +231,32 @@ class Stages(object):
         self.run_gatk('variant_annotator_gatk', gatk_args)
 
 
- apply_vep(self, ielf, vcf_in, vcf_out):
-         '''Filtering variants (separate filters for SNPs and indels)'''
-                 gatk_args = "-T VariantFiltration " \
-                "--disable_auto_index_creation_and_locking_when_reading_rods " \
-                "-R {reference} " \
-                "-l ERROR " \
-                "--filterExpression \"QUAL < 30.0\" --filterName GNRL_VeryLowQual " \
-               "--filterExpression \"QD < 2.0\" --filterName GNRL_LowQD " \
-               "--filterExpression \"DP < 50\" --filterName GNRL_LowCoverage " \
-               "--filterExpression \"ReadPosRankSum < -20.0\" " \
-               "--filterName GNRL_ReadPosRankSum " \
-               "--filterExpression \"OLD_MULTIALLELIC =~ '.+'\" " \
-               "--filterName MultiAllelicSite " \
-               "--filterExpression \"VariantType == 'SNP' && MQ < 30.0\" " \
-               "--filterName SNP_LowMappingQual " \
-               "--filterExpression \"VariantType == 'SNP' && SOR > 3.0\" " \
-               "--filterName SNP_StrandBias " \
-               "--filterExpression \"VariantType == 'SNP' && MQRankSum < -12.5\" " \
-               "--filterName SNP_MQRankSum " \
-               "--filterExpression \"VariantType == 'SNP' && ReadPosRankSum < -8.0\" " \
-               "--filterName SNP_ReadPosRankSum " \
-               "--variant {vcf_in} " \
-               "-o {vcf_out}".format(vcf_in=vcf_in,
-               vcf_out=vcf_out,
-               reference=self.reference)
-               self.run_gatk('gatk_filter', gatk_args)
+    def gatk_filter(self, vcf_in, vcf_out):
+        '''Filtering variants (separate filters for SNPs and indels)'''
+        gatk_args = "-T VariantFiltration " \
+                    "--disable_auto_index_creation_and_locking_when_reading_rods " \
+                    "-R {reference} " \
+                    "-l ERROR " \
+                    "--filterExpression \"QUAL < 30.0\" --filterName GNRL_VeryLowQual " \
+                    "--filterExpression \"QD < 2.0\" --filterName GNRL_LowQD " \
+                    "--filterExpression \"DP < 50\" --filterName GNRL_LowCoverage " \
+                    "--filterExpression \"ReadPosRankSum < -20.0\" " \
+                    "--filterName GNRL_ReadPosRankSum " \
+                    "--filterExpression \"OLD_MULTIALLELIC =~ '.+'\" " \
+                    "--filterName MultiAllelicSite " \
+                    "--filterExpression \"VariantType == 'SNP' && MQ < 30.0\" " \
+                    "--filterName SNP_LowMappingQual " \
+                    "--filterExpression \"VariantType == 'SNP' && SOR > 3.0\" " \
+                    "--filterName SNP_StrandBias " \
+                    "--filterExpression \"VariantType == 'SNP' && MQRankSum < -12.5\" " \
+                    "--filterName SNP_MQRankSum " \
+                    "--filterExpression \"VariantType == 'SNP' && ReadPosRankSum < -8.0\" " \
+                    "--filterName SNP_ReadPosRankSum " \
+                    "--variant {vcf_in} " \
+                    "-o {vcf_out}".format(vcf_in=vcf_in,
+                                          vcf_out=vcf_out,
+                                          reference=self.reference)
+        self.run_gatk('gatk_filter', gatk_args)
 
     def apply_vep(self, inputs, vcf_out):
         '''Apply VEP'''
