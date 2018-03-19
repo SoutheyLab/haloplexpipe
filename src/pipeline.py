@@ -4,9 +4,9 @@ Build the pipeline workflow by plumbing the stages together.
 
 from ruffus import Pipeline, suffix, formatter, add_inputs, output_from, regex
 from stages import Stages
+import glob
 
-
-def make_pipeline(state):
+def make_pipeline_map(state):
     '''Build the pipeline by constructing stages and connecting them together'''
     # Build an empty pipeline
     pipeline = Pipeline(name='haloplexpipe')
@@ -122,13 +122,34 @@ def make_pipeline(state):
         filter=formatter('.+/(?P<sample>[a-zA-Z0-9-_]+).sorted.locatit.bam'),
         output='variants/gatk/{sample[0]}.g.vcf')
         .follows('sort_bam'))
+    return(pipeline)
+
+
+def make_pipeline_process(state):
+    #originate process pipeline state
+    
+    # Define empty pipeline
+    pipeline = Pipeline(name='haloplexpipe')
+    # Get a list of paths to all the directories to be combined for variant calling
+    run_directories = state.config.get_option('runs')
+    #grab files from each of the processed directories in "runs"
+    gatk_files = []
+    for directory in run_directories:
+        gatk_files.extend(glob.glob(directory + '/variants/gatk/*.g.vcf'))
+
+    stages = Stages(state)
+
+    pipeline.originate(
+        task_func=stages.glob_gatk,
+        name='glob_gatk',
+        output=gatk_files)
 
     # Combine G.VCF files for all samples using GATK
     pipeline.merge(
         task_func=stages.combine_gvcf_gatk,
         name='combine_gvcf_gatk',
-        input=output_from('call_haplotypecaller_gatk'),
-        output='variants/gatk/ALL.combined.vcf')
+        input=output_from('glob_gatk'),
+        output='ALL.combined.vcf')
 
     # Genotype G.VCF files using GATK
     pipeline.transform(
@@ -172,11 +193,11 @@ def make_pipeline(state):
 
     #Apply VEP
     (pipeline.transform(
-         task_func=stages.apply_vep,
-         name='apply_vep',
-         input=output_from('gatk_filter'),
-         filter=suffix('.raw.gt-filter.decomp.norm.annotate.filter.vcf'),
-         output='.raw.gt-filter.decomp.norm.annotate.filter.vep.vcf')
-         .follows('gatk_filter'))
+        task_func=stages.apply_vep,
+        name='apply_vep',
+        input=output_from('gatk_filter'),
+        filter=suffix('.raw.gt-filter.decomp.norm.annotate.filter.vcf'),
+        output='.raw.gt-filter.decomp.norm.annotate.filter.vep.vcf')
+        .follows('gatk_filter'))
 
     return pipeline

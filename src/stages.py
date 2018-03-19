@@ -56,6 +56,11 @@ class Stages(object):
     def original_fastqs(self, output):
         '''Original fastq files'''
         pass
+    
+    def glob_gatk(self, output):
+        '''grab all the gatk .g.vcf files'''
+        pass
+
 
     def run_surecalltrimmer(self, inputs, outputs, sample_id):
         '''Run SurecallTrimmer on the raw reads'''
