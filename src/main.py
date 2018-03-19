@@ -44,8 +44,7 @@ def parse_command_line():
     parser.add_argument('--mode', type=str, default='map', choices=['map', 'process'],
                         help='set to "map" to process fastq files up to haplotype caller' \
                         ', or "process" to process multiple map directories.  Default is map')
-        parser.add_argument('--version', action='version',
-        version='%(prog)s ' + version)
+    parser.add_argument('--version', action='version', version='%(prog)s ' + version)
     return parser.parse_args()
 
 def main():
