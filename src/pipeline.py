@@ -44,15 +44,23 @@ def make_pipeline_map(state):
         extras=['{sample[0]}'],
         output='alignments/{sample[0]}.bam')
 
-    #Run locatit from agilent.  this should produce sorted bam files, so no sorting needed at the next step
-    pipeline.transform(
+    ## Run locatit from agilent.  this should produce sorted bam files, so no sorting needed at the next step
+    #pipeline.transform(
+    #    task_func=stages.run_locatit,
+    #    name='run_locatit',
+    #    input=output_from('align_bwa', 'original_fastqs'),
+    #    filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam'),
+    #    #this is hacky at the moment and i'd like to read the path from a variable.
+    #    add_inputs=add_inputs('data_from_share/{sample[0]}_I2.fastq.gz'),
+    #    output='alignments/{sample[0]}.locatit.bam')
+    
+    # Run locatit from agilent.  this should produce sorted bam files, so no sorting needed at the next step
+    pipeline.collate(
         task_func=stages.run_locatit,
         name='run_locatit',
         input=output_from('align_bwa', 'original_fastqs'),
-        filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam'),
-        #this is hacky at the moment and i'd like to read the path from a variable.
-        add_inputs=add_inputs('data_from_share/{sample[0]}_I2.fastq.gz'),
-        output='alignments/{sample[0]}.locatit.bam')
+        filter=regex(r'.+/(.+_L\d\d\d).+'),
+        output=r'alignments/\1.locatit.bam')
     
     pipeline.transform(
         task_func=stages.sort_bam,

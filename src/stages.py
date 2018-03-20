@@ -66,15 +66,24 @@ class Stages(object):
         '''Run SurecallTrimmer on the raw reads'''
         fastq_read1_in, fastq_read2_in = inputs
         safe_make_dir('processed_fastqs')
-        #need to make the path to this .jar file a variable in config file
+        # Need to make the path to this .jar file a variable in config file
         command = 'java -Xmx{mem}g -jar /projects/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar ' \
-                                   '-fq1 {fastq_read1} -fq2 {fastq_read2} -halo -out_loc ./processed_fastqs; ' \
+                                   '-fq1 {fastq_read1} -fq2 {fastq_read2} -hs -out_loc ./processed_fastqs; ' \
                                    'mv ./processed_fastqs/{sample}_R1.fastq.gz* ./processed_fastqs/{sample}_R1.processed.fastq.gz; ' \
                                    'mv ./processed_fastqs/{sample}_R2.fastq.gz* ./processed_fastqs/{sample}_R2.processed.fastq.gz' \
                   .format(mem=self.state.config.get_stage_options('run_surecalltrimmer', 'mem'),
                           fastq_read1=fastq_read1_in,
                           fastq_read2=fastq_read2_in,
                           sample=sample_id)
+
+        # command = 'java -Xmx{mem}g -jar /projects/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar ' \
+        #           '-fq1 {fastq_read1} -fq2 {fastq_read2} -halo -out_loc ./processed_fastqs; ' \
+        #           'mv ./processed_fastqs/{sample}_R1.fastq.gz* ./processed_fastqs/{sampe}_R1.processed.fastq.gz; ' \
+        #           'mv ./processed_fastqs/{sample}_R2.fastq.gz* ./processed_fastqs/{sampe}_R2.processed.fastq.gz' \
+        #               .format(mem=self.state.config.get_stage_options('run_surecalltrimmer', 'mem'),
+        #                       fastq_read1=fastq_read1_in,
+        #                       fastq_read2=fastq_read2_in,
+        #                       sample=sample_id)
 
         run_stage(self.state, 'run_surecalltrimmer', command) 
 
@@ -98,9 +107,10 @@ class Stages(object):
 
 
     def run_locatit(self, inputs, bam_out):
-        bam_in, index_file = inputs
+        bam_in = [ip for ip in inputs if ip.endswith('.bam')][0]
+        index_file = [ip for ip in inputs if ip.endswith('I2.fastq.gz')][0]
         #need to make the path to this .jar file a variable in config file
-        command = 'java -Xmx{mem}G -jar /projects/vh83/local_software/agent/LocatIt_v4.0.1.jar -U -q 25 -m 1 -IB -OB -b {locatit_bed_file} ' \
+        command = 'java -Xmx{mem}G -jar /projects/vh83/local_software/agent/LocatIt_v4.0.1.jar -U -q 25 -m 3 -d 0 -IB -OB -b {locatit_bed_file} ' \
                   '-o {bam_out} {bam_in} {index_file}' \
                   .format(mem=self.state.config.get_stage_options('run_locatit', 'mem'),
                          locatit_bed_file=self.locatit_bed_file,
@@ -108,6 +118,7 @@ class Stages(object):
                          bam_out=bam_out,
                          index_file=index_file)
         run_stage(self.state, 'run_locatit', command)
+
 
     def sort_bam(self, input, bam_out):
         '''sort the locatit bam files'''
