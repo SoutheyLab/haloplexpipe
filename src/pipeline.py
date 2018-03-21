@@ -157,7 +157,7 @@ def make_pipeline_process(state):
         task_func=stages.combine_gvcf_gatk,
         name='combine_gvcf_gatk',
         input=output_from('glob_gatk'),
-        output='ALL.combined.vcf')
+        output='processed/ALL.combined.vcf')
 
     # Genotype G.VCF files using GATK
     pipeline.transform(
@@ -200,12 +200,11 @@ def make_pipeline_process(state):
         output='.raw.gt-filter.decomp.norm.annotate.filter.vcf')
 
     #Apply VEP
-    (pipeline.transform(
+    pipeline.transform(
         task_func=stages.apply_vep,
         name='apply_vep',
         input=output_from('gatk_filter'),
         filter=suffix('.raw.gt-filter.decomp.norm.annotate.filter.vcf'),
         output='.raw.gt-filter.decomp.norm.annotate.filter.vep.vcf')
-        .follows('gatk_filter'))
 
     return pipeline

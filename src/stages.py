@@ -154,6 +154,7 @@ class Stages(object):
 
     def combine_gvcf_gatk(self, vcf_files_in, vcf_out):
         '''Combine G.VCF files for all samples using GATK'''
+        safe_make_dir('processed')
         merge_commands = []
         temp_merge_outputs = []
         for n in range(0, int(math.ceil(float(len(vcf_files_in)) / 200.0))):
@@ -276,7 +277,7 @@ class Stages(object):
 
     def apply_vep(self, inputs, vcf_out):
         '''Apply VEP'''
-        vcf_in = input
+        vcf_in = inputs
         cores = self.get_stage_options('apply_vep', 'cores')
         vep_command = "vep --cache --dir_cache {other_vep} " \
                       "--assembly GRCh37 --refseq --offline " \
