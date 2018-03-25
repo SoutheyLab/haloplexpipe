@@ -205,9 +205,9 @@ class Stages(object):
                     "-G_filter \"g.isHetNonRef() == 1\" " \
                     "-G_filterName \"HetNonRef\" " \
                     "-G_filter \"g.isHet() == 1 && g.isHetNonRef() != 1 && " \
-                    "1.0 * AD[vc.getAlleleIndex(g.getAlleles().1)] / (DP * 1.0) < 0.25\" " \
+                    "1.0 * AD[vc.getAlleleIndex(g.getAlleles().1)] / (DP * 1.0) < 0.20\" " \
                     "-G_filterName \"AltFreqLow\" " \
-                    "-G_filter \"DP < 50.0\" " \
+                    "-G_filter \"DP < 10.0\" " \
                     "-G_filterName \"LowDP\"".format(reference=self.reference,
                                                     vcf_in=vcf_in,
                                                     vcf_out=vcf_out)
@@ -256,7 +256,7 @@ class Stages(object):
                     "-l ERROR " \
                     "--filterExpression \"QUAL < 30.0\" --filterName GNRL_VeryLowQual " \
                     "--filterExpression \"QD < 2.0\" --filterName GNRL_LowQD " \
-                    "--filterExpression \"DP < 50\" --filterName GNRL_LowCoverage " \
+                    "--filterExpression \"DP < 10\" --filterName GNRL_LowCoverage " \
                     "--filterExpression \"ReadPosRankSum < -20.0\" " \
                     "--filterName GNRL_ReadPosRankSum " \
                     "--filterExpression \"OLD_MULTIALLELIC =~ '.+'\" " \
