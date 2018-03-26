@@ -60,8 +60,10 @@ class Stages(object):
     def glob_gatk(self, output):
         '''grab all the gatk .g.vcf files'''
         pass
-
-
+    def grab_summary_file(self, output):
+        '''grab the summary file for processing'''
+        pass
+    
     def run_surecalltrimmer(self, inputs, outputs, sample_id):
         '''Run SurecallTrimmer on the raw reads'''
         fastq_read1_in, fastq_read2_in = inputs
@@ -371,14 +373,15 @@ class Stages(object):
             elif inputfile.endswith('.total_raw_reads.txt'):
                 d = inputfile
         e = samplename
-        command = 'Rscript --vanilla /projects/vh83/pipelines/code/modified_summary_stat.R ' \
+        command = 'touch {txt_out}; Rscript --vanilla /projects/vh83/pipelines/code/modified_summary_stat.R ' \
                   '{hist_in} {map_genome_in} {map_target_in} {raw_reads_in} {sample_name} ' \
-                  '{txt_out}'.format(hist_in=a, 
+                  '{joint_output}'.format(txt_out=txt_out, 
+                                      hist_in=a, 
                                       map_genome_in=b, 
                                       map_target_in=c, 
                                       raw_reads_in=d , 
                                       sample_name=e , 
-                                      txt_out=joint_output)
+                                      joint_output=joint_output)
         run_stage(self.state, 'generate_stats', command)
 
     def sort_vcfs(self, vcf_in, vcf_out):
@@ -414,4 +417,12 @@ class Stages(object):
         run_stage(self.state, 'index_final_vcf', command)
 
 
+    def filter_stats(self, txt_in, txt_out):
+        '''filter the summary file to make a 'passed' file'''
+        awk_comm = "{if($11 >= 85){print \"alignments/\"$1\".sorted.locatit.bam\"}}"
+        command = "awk '{awk_comm}' {summary_file} > {final_file}".format(
+                                        awk_comm=awk_comm,
+                                        summary_file=txt_in,
+                                        final_file=txt_out)
 
+        run_stage(self.stats, 'filter_stats', command)

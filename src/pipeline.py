@@ -117,19 +117,41 @@ def make_pipeline_map(state):
         task_func=stages.generate_stats,
         name='generate_stats',
         input=output_from('coverage_bed', 'genome_reads', 'target_reads', 'total_reads'), 
-        filter=regex(r'.+/(.+BS\d{4,6}.+S\d+)\..+\.txt'),
+        #filter=regex(r'.+/(.+BS\d{4,6}.+S\d+)\..+\.txt'),
+        filter=regex(r'.+/(.+)\.(bedtools_hist_all|mapped_to_genome|mapped_to_target|total_raw_reads)\.txt'),
         output=r'all_sample.summary.\1.txt',
         extras=[r'\1', 'all_sample.summary.txt'])
 
-    ###### GATK VARIANT CALLING ######
+    pipeline.originate(
+        task_func=stages.grab_summary_file,
+        name='grab_summary_file',
+        output=summary_file)
+
+    pipeline.transform(
+        task_func=stages.filter_stats,
+        name='filter_stats',
+        input=output_from('grab_summary_file'),
+        filter=suffix('.summary.txt'),
+        output='.passed.summary.txt')
+
+    with open("all_sample.passed.summary.txt", 'r') as inputf:
+        passed_files = inputf.read().split('\n')
+
+    pipeline originate(
+        task_func=stages.passed_filter_files,
+        name='passed_filter_files', 
+        output=passed_filenames)
+
+
     # Call variants using GATK
     (pipeline.transform(
         task_func=stages.call_haplotypecaller_gatk,
         name='call_haplotypecaller_gatk',
-        input=output_from('sort_bam'),
+        input=output_from('passed_filter_files'),
         filter=formatter('.+/(?P<sample>[a-zA-Z0-9-_]+).sorted.locatit.bam'),
         output='variants/gatk/{sample[0]}.g.vcf')
         .follows('sort_bam'))
+
     return(pipeline)
 
 
@@ -147,11 +169,13 @@ def make_pipeline_process(state):
 
     stages = Stages(state)
 
+    #dummy stage to take the globbed outputs of each run that is to be processed
     pipeline.originate(
         task_func=stages.glob_gatk,
         name='glob_gatk',
         output=gatk_files)
 
+    
     # Combine G.VCF files for all samples using GATK
     pipeline.merge(
         task_func=stages.combine_gvcf_gatk,
