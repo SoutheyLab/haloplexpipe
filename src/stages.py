@@ -112,7 +112,12 @@ class Stages(object):
         bam_in = [ip for ip in inputs if ip.endswith('.bam')][0]
         index_file = [ip for ip in inputs if ip.endswith('I2.fastq.gz')][0]
         #need to make the path to this .jar file a variable in config file
-        command = 'java -Xmx{mem}G -jar /projects/vh83/local_software/agent/LocatIt_v4.0.1.jar -U -q 25 -m 3 -d 0 -IB -OB -b {locatit_bed_file} ' \
+        # Original command
+        # command = 'java -Xmx{mem}G -jar /projects/vh83/local_software/agent/LocatIt_v4.0.1.jar ' \
+        #           '-U -q 25 -m 3 -d 0 -IB -OB -b {locatit_bed_file} ' \
+        #           '-o {bam_out} {bam_in} {index_file}' \
+        command = 'java -Xmx{mem}G -jar /projects/vh83/local_software/agent/LocatIt_v4.0.1.jar ' \
+                  '-U -q 25 -m 1 -d 0 -IB -OB -b {locatit_bed_file} ' \
                   '-o {bam_out} {bam_in} {index_file}' \
                   .format(mem=self.state.config.get_stage_options('run_locatit', 'mem'),
                          locatit_bed_file=self.locatit_bed_file,
@@ -209,7 +214,7 @@ class Stages(object):
                     "-G_filter \"g.isHet() == 1 && g.isHetNonRef() != 1 && " \
                     "1.0 * AD[vc.getAlleleIndex(g.getAlleles().1)] / (DP * 1.0) < 0.20\" " \
                     "-G_filterName \"AltFreqLow\" " \
-                    "-G_filter \"DP < 10.0\" " \
+                    "-G_filter \"DP < 20.0\" " \
                     "-G_filterName \"LowDP\"".format(reference=self.reference,
                                                     vcf_in=vcf_in,
                                                     vcf_out=vcf_out)
@@ -362,6 +367,7 @@ class Stages(object):
 # Generate stats collate stage
     def generate_stats(self, inputs, txt_out, samplename, joint_output):
         '''run R stats script'''
+        safe_make_dir('alignments/metrics')
         # Assigning inputfiles to correct variables based on suffix
         for inputfile in inputs:
             if inputfile.endswith('.bedtools_hist_all.txt'):
@@ -392,6 +398,14 @@ class Stages(object):
     def index_vcfs(self, vcf_in, vcf_out):
         command = 'bcftools index -f --tbi {vcf_in}'.format(vcf_in=vcf_in)
         run_stage(self.state, 'index_vcfs', command)
+
+    def read_samples(self, input_pth):
+        safe_make_dir('alignments/pass_samples')
+        with open(input_pth, 'r') as inputf:
+            pass_files = inputf.read().split('\n')
+        for f in pass_files:
+            with open('alignments/pass_samples/{}'.format(f), 'w') as touchf:
+                pass
     
     def concatenate_vcfs(self, vcf_files_in, vcf_out):
         merge_commands = []
@@ -415,7 +429,6 @@ class Stages(object):
     def index_final_vcf(self, vcf_in, vcf_out):
         command = 'bcftools index -f --tbi {vcf_in}'.format(vcf_in=vcf_in)
         run_stage(self.state, 'index_final_vcf', command)
-
 
     def filter_stats(self, txt_in, txt_out):
         '''filter the summary file to make a 'passed' file'''

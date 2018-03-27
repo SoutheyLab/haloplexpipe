@@ -44,16 +44,6 @@ def make_pipeline_map(state):
         extras=['{sample[0]}'],
         output='alignments/{sample[0]}.bam')
 
-    ## Run locatit from agilent.  this should produce sorted bam files, so no sorting needed at the next step
-    #pipeline.transform(
-    #    task_func=stages.run_locatit,
-    #    name='run_locatit',
-    #    input=output_from('align_bwa', 'original_fastqs'),
-    #    filter=formatter('alignments/(?P<sample>[a-zA-Z0-9_-]+).bam'),
-    #    #this is hacky at the moment and i'd like to read the path from a variable.
-    #    add_inputs=add_inputs('data_from_share/{sample[0]}_I2.fastq.gz'),
-    #    output='alignments/{sample[0]}.locatit.bam')
-    
     # Run locatit from agilent.  this should produce sorted bam files, so no sorting needed at the next step
     pipeline.collate(
         task_func=stages.run_locatit,
@@ -69,11 +59,67 @@ def make_pipeline_map(state):
         filter=suffix('.locatit.bam'),
         output='.sorted.locatit.bam')        
 
-    # generate mapping metrics.
+#############################################
+    ## generate mapping metrics (pre locatit)
+    #pipeline.transform(
+    #    task_func=stages.generate_amplicon_metrics,
+    #    name='generate_amplicon_metrics',
+    #    input=output_from('align_bwa'),
+    #    filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).bam'),
+    #    output='alignments/metrics/{sample[0]}.amplicon-metrics.txt',
+    #    extras=['{sample[0]}'])
+
+    #pipeline.transform(
+    #    task_func=stages.intersect_bed,
+    #    name='intersect_bed',
+    #    input=output_from('align_bwa'),
+    #    filter=suffix('.bam'),
+    #    output='.intersectbed.bam')
+
+    #pipeline.transform(
+    #    task_func=stages.coverage_bed,
+    #    name='coverage_bed',
+    #    input=output_from('intersect_bed'),
+    #    filter=suffix('.intersectbed.bam'),
+    #    output='.bedtools_hist_all.txt')
+
+    #pipeline.transform(
+    #    task_func=stages.genome_reads,
+    #    name='genome_reads',
+    #    input=output_from('align_bwa'),
+    #    filter=suffix('.bam'),
+    #    output='.mapped_to_genome.txt')
+
+    #pipeline.transform(
+    #    task_func=stages.target_reads,
+    #    name='target_reads',
+    #    input=output_from('intersect_bed'),
+    #    filter=suffix('.intersectbed.bam'),
+    #    output='.mapped_to_target.txt')
+
+    #pipeline.transform(
+    #    task_func=stages.total_reads,
+    #    name='total_reads',
+    #    input=output_from('align_bwa'),
+    #    filter=suffix('.bam'),
+    #    output='.total_raw_reads.txt')
+
+    #pipeline.collate(
+    #    task_func=stages.generate_stats,
+    #    name='generate_stats',
+    #    input=output_from('coverage_bed', 'genome_reads', 'target_reads', 'total_reads'), 
+    #    #filter=regex(r'.+/(.+BS\d{4,6}.+S\d+)\..+\.txt'),
+    #    filter=regex(r'.+/(.+)\.(bedtools_hist_all|mapped_to_genome|mapped_to_target|total_raw_reads)\.txt'),
+    #    output=r'alignments/metrics/all_sample.summary.\1.txt',
+    #    extras=[r'\1', 'alignments/metrics/all_sample.summary.txt'])
+#####################################
+
+####################################
+    # generate mapping metrics (post locatit)
     pipeline.transform(
         task_func=stages.generate_amplicon_metrics,
         name='generate_amplicon_metrics',
-        input=output_from('run_locatit'),
+        input=output_from('sort_bam'),
         filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).sorted.locatit.bam'),
         output='alignments/metrics/{sample[0]}.amplicon-metrics.txt',
         extras=['{sample[0]}'])
@@ -119,13 +165,15 @@ def make_pipeline_map(state):
         input=output_from('coverage_bed', 'genome_reads', 'target_reads', 'total_reads'), 
         #filter=regex(r'.+/(.+BS\d{4,6}.+S\d+)\..+\.txt'),
         filter=regex(r'.+/(.+)\.(bedtools_hist_all|mapped_to_genome|mapped_to_target|total_raw_reads)\.txt'),
-        output=r'all_sample.summary.\1.txt',
-        extras=[r'\1', 'all_sample.summary.txt'])
+        output=r'alignments/metrics/all_sample.summary.\1.txt',
+        extras=[r'\1', 'alignments/metrics/all_sample.summary.txt'])
+###########################################
 
-    pipeline.originate(
+    (pipeline.originate(
         task_func=stages.grab_summary_file,
         name='grab_summary_file',
-        output=summary_file)
+        output='alignments/metrics/all_sample.summary.txt')
+            .follows('generate_stats'))
 
     pipeline.transform(
         task_func=stages.filter_stats,
@@ -134,14 +182,15 @@ def make_pipeline_map(state):
         filter=suffix('.summary.txt'),
         output='.passed.summary.txt')
 
-    with open("all_sample.passed.summary.txt", 'r') as inputf:
-        passed_files = inputf.read().split('\n')
+    # with open("all_sample.passed.summary.txt", 'r') as inputf:
+    #     passed_files = inputf.read().split('\n')
 
-    pipeline originate(
-        task_func=stages.passed_filter_files,
+    pipeline.subdivide(
         name='passed_filter_files', 
-        output=passed_filenames)
-
+        task_func=stages.read_samples,
+        input=output_from('filter_stats'),
+        filter=suffix('.passed.summary.txt'),
+        output=r'alignments/pass_samples/*')
 
     # Call variants using GATK
     (pipeline.transform(
