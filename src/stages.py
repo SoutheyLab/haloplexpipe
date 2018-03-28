@@ -21,9 +21,11 @@ def java_command(jar_path, mem_in_gb, command_args):
     return 'java -Xmx{mem}g -jar {jar_path} {command_args}'.format(
         jar_path=jar_path, mem=java_mem, command_args=command_args)
 
+
 def run_java(state, stage, jar_path, mem, args):
     command = java_command(jar_path, mem, args)
     run_stage(state, stage, command)
+
 
 class Stages(object):
     def __init__(self, state):
@@ -43,6 +45,7 @@ class Stages(object):
         self.locatit_bed_file = self.get_options('locatit_bedfile')
         self.gatk_jar=self.get_options('gatk_jar')
 
+    ######### General methods ######### 
     def run_gatk(self, stage, args):
         mem = int(self.state.config.get_stage_options(stage, 'mem'))
         return run_java(self.state, stage, self.gatk_jar, mem, args)
@@ -53,6 +56,12 @@ class Stages(object):
     def get_options(self, *options):
         return self.state.config.get_options(*options)
 
+
+    ######### Map methods ######### 
+    # Methods to trim, align,
+    # de-mutiplex and sort input 
+    # fastq files
+    ###############################
     def original_fastqs(self, output):
         '''Original fastq files'''
         pass
@@ -77,18 +86,7 @@ class Stages(object):
                           fastq_read1=fastq_read1_in,
                           fastq_read2=fastq_read2_in,
                           sample=sample_id)
-
-        # command = 'java -Xmx{mem}g -jar /projects/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar ' \
-        #           '-fq1 {fastq_read1} -fq2 {fastq_read2} -halo -out_loc ./processed_fastqs; ' \
-        #           'mv ./processed_fastqs/{sample}_R1.fastq.gz* ./processed_fastqs/{sampe}_R1.processed.fastq.gz; ' \
-        #           'mv ./processed_fastqs/{sample}_R2.fastq.gz* ./processed_fastqs/{sampe}_R2.processed.fastq.gz' \
-        #               .format(mem=self.state.config.get_stage_options('run_surecalltrimmer', 'mem'),
-        #                       fastq_read1=fastq_read1_in,
-        #                       fastq_read2=fastq_read2_in,
-        #                       sample=sample_id)
-
         run_stage(self.state, 'run_surecalltrimmer', command) 
-
 
     def align_bwa(self, inputs, bam_out, sample_id):
         '''Align the paired end fastq files to the reference genome using bwa'''
@@ -107,15 +105,10 @@ class Stages(object):
                           bam=bam_out)
         run_stage(self.state, 'align_bwa', command)
 
-
     def run_locatit(self, inputs, bam_out):
         bam_in = [ip for ip in inputs if ip.endswith('.bam')][0]
         index_file = [ip for ip in inputs if ip.endswith('I2.fastq.gz')][0]
-        #need to make the path to this .jar file a variable in config file
-        # Original command
-        # command = 'java -Xmx{mem}G -jar /projects/vh83/local_software/agent/LocatIt_v4.0.1.jar ' \
-        #           '-U -q 25 -m 3 -d 0 -IB -OB -b {locatit_bed_file} ' \
-        #           '-o {bam_out} {bam_in} {index_file}' \
+        # Need to make the path to this .jar file a variable in config file
         command = 'java -Xmx{mem}G -jar /projects/vh83/local_software/agent/LocatIt_v4.0.1.jar ' \
                   '-U -q 25 -m 1 -d 0 -IB -OB -b {locatit_bed_file} ' \
                   '-o {bam_out} {bam_in} {index_file}' \
@@ -126,17 +119,15 @@ class Stages(object):
                          index_file=index_file)
         run_stage(self.state, 'run_locatit', command)
 
-
     def sort_bam(self, input, bam_out):
         '''sort the locatit bam files'''
         command = 'samtools sort -o {bam_out} {input}; samtools index {bam_out}'.format(input=input, bam_out=bam_out)
         run_stage(self.state, 'sort_bam', command)
 
-
-    ##########
     def call_haplotypecaller_gatk(self, bam_in, vcf_out):
         '''Call variants using GATK'''
         safe_make_dir('variants/gatk')
+        bam_in = 'alignments/' + os.path.basename(bam_in)
         cores = self.get_stage_options('call_haplotypecaller_gatk', 'cores')
         gatk_args = "-T HaplotypeCaller -R {reference} --min_base_quality_score 20 " \
                     "--emitRefConfidence GVCF " \
@@ -159,6 +150,104 @@ class Stages(object):
                                                                   out=vcf_out, cores=cores)
         self.run_gatk('call_haplotypecaller_gatk', gatk_args)
 
+    ################## Map metrics methods ##################
+    # Methods to generate metrics on the aligned bam files,
+    # check the metrics, and produce a list of bam files that 
+    # pass these metrics for HaplotypeCaller to call variants on.
+    #########################################################
+    def generate_amplicon_metrics(self, bam_in, txt_out, sample):
+        '''Generate depth information for each amplicon and sample for heatmap plotting'''
+        safe_make_dir('alignments/metrics')
+        command = 'bedtools coverage -f 5E-1 -a {bed_intervals} -b {bam_in} | ' \
+                  'sed "s/$/	{sample}/g" > {txt_out}'.format(bed_intervals=self.interval_file,
+                                                                bam_in=bam_in,
+                                                                sample=sample,
+                                                                txt_out=txt_out)
+        run_stage(self.state, 'generate_amplicon_metrics', command)
+
+    def intersect_bed(self, bam_in, bam_out):
+        '''intersect the bed file with the interval file '''
+        command = "intersectBed -abam {bam_in} -b {interval_file} > {bam_out} ".format(
+                     bam_in=bam_in, interval_file=self.interval_file, bam_out=bam_out)
+        run_stage(self.state, 'intersect_bed', command)           
+
+
+    def coverage_bed(self, bam_in, txt_out):
+        ''' make coverage files '''
+        command = "coverageBed -b {bam_in} -a {interval_file} -hist | grep all > {txt_out}".format(
+                     bam_in=bam_in, interval_file=self.interval_file, txt_out=txt_out)
+        run_stage(self.state, 'coverage_bed', command)
+    
+    def genome_reads(self, bam_in, txt_out):
+        '''count reads that map to the genome'''
+        command = 'samtools view -c -F4 {bam_in} > {txt_out}'.format(
+                        bam_in=bam_in, txt_out=txt_out)
+        run_stage(self.state, 'genome_reads', command)
+
+    def target_reads(self, bam_in, txt_out):
+        '''count reads that map to target panel'''
+        command = 'samtools view -c -F4 {bam_in} > {txt_out}'.format(
+                        bam_in=bam_in, txt_out=txt_out)
+        run_stage(self.state, 'target_reads', command)
+
+    def total_reads(self, bam_in, txt_out):
+        '''count the total number of reads that we started with'''
+        command = 'samtools view -c {bam_in} > {txt_out}'.format(
+                        bam_in=bam_in, txt_out=txt_out)
+        run_stage(self.state, 'total_reads', command)
+
+    def generate_stats(self, inputs, txt_out, samplename, joint_output):
+        '''run R stats script'''
+        safe_make_dir('alignments/metrics')
+        # Assigning inputfiles to correct variables based on suffix
+        for inputfile in inputs:
+            if inputfile.endswith('.bedtools_hist_all.txt'):
+                a = inputfile
+            elif inputfile.endswith('.mapped_to_genome.txt'):
+                b = inputfile
+            elif inputfile.endswith('.mapped_to_target.txt'):
+                c = inputfile
+            elif inputfile.endswith('.total_raw_reads.txt'):
+                d = inputfile
+        e = samplename
+        command = 'touch {txt_out}; Rscript --vanilla /projects/vh83/pipelines/code/modified_summary_stat.R ' \
+                  '{hist_in} {map_genome_in} {map_target_in} {raw_reads_in} {sample_name} ' \
+                  '{joint_output}'.format(txt_out=txt_out, 
+                                      hist_in=a, 
+                                      map_genome_in=b, 
+                                      map_target_in=c, 
+                                      raw_reads_in=d , 
+                                      sample_name=e , 
+                                      joint_output=joint_output)
+        run_stage(self.state, 'generate_stats', command)
+
+    def filter_stats(self, txt_in, txt_out):
+        '''filter the summary file to make a 'passed' file'''
+        # Only mark samples as pass if >= 80% of target is covered at at least 10X
+        # Set to 0 for now since I want to make everything pass
+        awk_comm = "{if($8 >= 0){print $1\".sorted.locatit.bam\"}}"
+        command = "awk '{awk_comm}' {summary_file} > {final_file}".format(
+                                        awk_comm=awk_comm,
+                                        summary_file=txt_in,
+                                        final_file=txt_out)
+        run_stage(self.state, 'filter_stats', command)
+
+    def read_samples(self, input_pth, outputs):
+        '''Reads the list of pass samples and touches files accordingly 
+        in the alignments/pass_samples folder'''
+        safe_make_dir('alignments/pass_samples')
+        with open(input_pth, 'r') as inputf:
+            pass_files = inputf.read().split('\n')
+        command_l = []
+        for f in pass_files:
+            command_l.append("alignments/pass_samples/{}".format(f))
+        command = 'touch {}'.format(' '.join(command_l))
+        run_stage(self.state, 'read_samples', command)
+    
+    ################## Process methods ##################
+    # Methods to combine gvcf files produced by the map stage, 
+    # joint-genotype, process and annotate
+    #####################################################
     def combine_gvcf_gatk(self, vcf_files_in, vcf_out):
         '''Combine G.VCF files for all samples using GATK'''
         safe_make_dir('processed')
@@ -318,124 +407,3 @@ class Stages(object):
                                             caddpath=self.cadd)
         run_stage(self.state, 'apply_vep', vep_command)
 
-
-######  stats sections
-
-    def intersect_bed(self, bam_in, bam_out):
-        '''intersect the bed file with the interval file '''
-        command = "intersectBed -abam {bam_in} -b {interval_file} > {bam_out} ".format(
-                     bam_in=bam_in, interval_file=self.interval_file, bam_out=bam_out)
-        run_stage(self.state, 'intersect_bed', command)           
-
-
-    def coverage_bed(self, bam_in, txt_out):
-        ''' make coverage files '''
-        command = "coverageBed -b {bam_in} -a {interval_file} -hist | grep all > {txt_out}".format(
-                     bam_in=bam_in, interval_file=self.interval_file, txt_out=txt_out)
-        run_stage(self.state, 'coverage_bed', command)
-    
-    def genome_reads(self, bam_in, txt_out):
-        '''count reads that map to the genome'''
-        command = 'samtools view -c -F4 {bam_in} > {txt_out}'.format(
-                        bam_in=bam_in, txt_out=txt_out)
-        run_stage(self.state, 'genome_reads', command)
-
-    def target_reads(self, bam_in, txt_out):
-        '''count reads that map to target panel'''
-        command = 'samtools view -c -F4 {bam_in} > {txt_out}'.format(
-                        bam_in=bam_in, txt_out=txt_out)
-        run_stage(self.state, 'target_reads', command)
-
-    def total_reads(self, bam_in, txt_out):
-        '''count the total number of reads that we started with'''
-        command = 'samtools view -c {bam_in} > {txt_out}'.format(
-                        bam_in=bam_in, txt_out=txt_out)
-        run_stage(self.state, 'total_reads', command)
-
-    def generate_amplicon_metrics(self, bam_in, txt_out, sample):
-        '''Generate depth information for each amplicon and sample for heatmap plotting'''
-        safe_make_dir('alignments/metrics')
-        command = 'bedtools coverage -f 5E-1 -a {bed_intervals} -b {bam_in} | ' \
-                  'sed "s/$/	{sample}/g" > {txt_out}'.format(bed_intervals=self.interval_file,
-                                                            bam_in=bam_in,
-                                                            sample=sample,
-                                                            txt_out=txt_out)
-        run_stage(self.state, 'generate_amplicon_metrics', command)
-
-
-
-# Generate stats collate stage
-    def generate_stats(self, inputs, txt_out, samplename, joint_output):
-        '''run R stats script'''
-        safe_make_dir('alignments/metrics')
-        # Assigning inputfiles to correct variables based on suffix
-        for inputfile in inputs:
-            if inputfile.endswith('.bedtools_hist_all.txt'):
-                a = inputfile
-            elif inputfile.endswith('.mapped_to_genome.txt'):
-                b = inputfile
-            elif inputfile.endswith('.mapped_to_target.txt'):
-                c = inputfile
-            elif inputfile.endswith('.total_raw_reads.txt'):
-                d = inputfile
-        e = samplename
-        command = 'touch {txt_out}; Rscript --vanilla /projects/vh83/pipelines/code/modified_summary_stat.R ' \
-                  '{hist_in} {map_genome_in} {map_target_in} {raw_reads_in} {sample_name} ' \
-                  '{joint_output}'.format(txt_out=txt_out, 
-                                      hist_in=a, 
-                                      map_genome_in=b, 
-                                      map_target_in=c, 
-                                      raw_reads_in=d , 
-                                      sample_name=e , 
-                                      joint_output=joint_output)
-        run_stage(self.state, 'generate_stats', command)
-
-    def sort_vcfs(self, vcf_in, vcf_out):
-        '''sort undr_rover vcf files'''
-        command = 'bcftools sort -o {vcf_out} -O z {vcf_in}'.format(vcf_out=vcf_out, vcf_in=vcf_in)
-        run_stage(self.state, 'sort_vcfs', command)
-    
-    def index_vcfs(self, vcf_in, vcf_out):
-        command = 'bcftools index -f --tbi {vcf_in}'.format(vcf_in=vcf_in)
-        run_stage(self.state, 'index_vcfs', command)
-
-    def read_samples(self, input_pth):
-        safe_make_dir('alignments/pass_samples')
-        with open(input_pth, 'r') as inputf:
-            pass_files = inputf.read().split('\n')
-        for f in pass_files:
-            with open('alignments/pass_samples/{}'.format(f), 'w') as touchf:
-                pass
-    
-    def concatenate_vcfs(self, vcf_files_in, vcf_out):
-        merge_commands = []
-        temp_merge_outputs = []
-        for n in range(0, int(math.ceil(float(len(vcf_files_in)) / 200.0))):
-            start = n * 200
-            filelist = vcf_files_in[start:start + 200]
-            filelist_command = ' '.join([vcf for vcf in filelist])
-            temp_merge_filename = vcf_out.rstrip('.vcf') + ".temp_{start}.vcf".format(start=str(start))
-            command1 = 'bcftools concat -a -O z -o {vcf_out} {join_vcf_files} && bcftools index -t -f {vcf_out}; '.format(vcf_out=temp_merge_filename, join_vcf_files=filelist_command)     
-            merge_commands.append(command1)
-            temp_merge_outputs.append(temp_merge_filename)
-
-        final_merge_vcfs = ' '.join([vcf for vcf in temp_merge_outputs])
-        command2 = 'bcftools concat -a -O z -o {vcf_out} {join_vcf_files} '.format(vcf_out=vcf_out, join_vcf_files=final_merge_vcfs)        
-
-        merge_commands.append(command2)
-        final_command = ''.join(merge_commands)
-        run_stage(self.state, 'concatenate_vcfs', final_command)
-
-    def index_final_vcf(self, vcf_in, vcf_out):
-        command = 'bcftools index -f --tbi {vcf_in}'.format(vcf_in=vcf_in)
-        run_stage(self.state, 'index_final_vcf', command)
-
-    def filter_stats(self, txt_in, txt_out):
-        '''filter the summary file to make a 'passed' file'''
-        awk_comm = "{if($11 >= 85){print \"alignments/\"$1\".sorted.locatit.bam\"}}"
-        command = "awk '{awk_comm}' {summary_file} > {final_file}".format(
-                                        awk_comm=awk_comm,
-                                        summary_file=txt_in,
-                                        final_file=txt_out)
-
-        run_stage(self.stats, 'filter_stats', command)
