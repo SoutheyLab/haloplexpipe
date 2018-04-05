@@ -28,7 +28,7 @@ def make_pipeline_map(state):
         name='run_surecalltrimmer',
         input=output_from('original_fastqs'),
         filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+)_R1.fastq.gz'),
-        add_inputs=add_inputs('{path[0]}/{sample[0]}_R2.fastq.gz'),
+        add_inputs=add_inputs('{path[0]}/{sample[0]}_R3.fastq.gz'),
         extras=['{sample[0]}'],
         # output only needs to know about one file to track progress of the pipeline, but the second certainly exists after this step.
         output='processed_fastqs/{sample[0]}_R1.processed.fastq.gz')
@@ -40,7 +40,7 @@ def make_pipeline_map(state):
         name='align_bwa',
         input=output_from('run_surecalltrimmer'),
         filter=formatter('processed_fastqs/(?P<sample>[a-zA-Z0-9_-]+)_R1.processed.fastq.gz'),
-        add_inputs=add_inputs('processed_fastqs/{sample[0]}_R2.processed.fastq.gz'),
+        add_inputs=add_inputs('processed_fastqs/{sample[0]}_R3.processed.fastq.gz'),
         extras=['{sample[0]}'],
         output='alignments/{sample[0]}.bam')
 

@@ -110,7 +110,7 @@ class Stages(object):
 
     def run_locatit(self, inputs, bam_out):
         bam_in = [ip for ip in inputs if ip.endswith('.bam')][0]
-        index_file = [ip for ip in inputs if ip.endswith('I2.fastq.gz')][0]
+        index_file = [ip for ip in inputs if ip.endswith('R2_001.fastq.gz')][0]
         #need to make the path to this .jar file a variable in config file
         command = 'java -Xmx{mem}G -jar /projects/vh83/local_software/agent/LocatIt_v4.0.1.jar -U -q 25 -m 3 -d 0 -IB -OB -b {locatit_bed_file} ' \
                   '-o {bam_out} {bam_in} {index_file}' \
