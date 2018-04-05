@@ -11,7 +11,8 @@ def make_pipeline_map(state):
     # Build an empty pipeline
     pipeline = Pipeline(name='haloplexpipe')
     # Get a list of paths to all the FASTQ files
-    fastq_files = state.config.get_option('fastqs')
+    #fastq_files = state.config.get_option('fastqs')
+    fastq_files = glob.glob("fastqs/*.gz")
     # Stages are dependent on the state
     stages = Stages(state)
 
