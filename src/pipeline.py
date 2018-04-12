@@ -5,6 +5,7 @@ Build the pipeline workflow by plumbing the stages together.
 from ruffus import Pipeline, suffix, formatter, add_inputs, output_from, regex
 from stages import Stages
 import glob
+from utils import safe_make_dir
 
 def make_pipeline_map(state):
     '''Build the pipeline by constructing stages and connecting them together'''
@@ -16,6 +17,15 @@ def make_pipeline_map(state):
     # Stages are dependent on the state
     stages = Stages(state)
 
+    safe_make_dir('alignments')
+    safe_make_dir('processed_fastqs')
+    safe_make_dir('metrics')
+    safe_make_dir('metrics/amplicon')
+    safe_make_dir('metrics/summary')
+    safe_make_dir('metrics/pass_samples')
+    safe_make_dir('variants')
+    safe_make_dir('variants/gatk')
+    
     # The original FASTQ files
     # This is a dummy stage. It is useful because it makes a node in the
     # pipeline graph, and gives the pipeline an obvious starting point.
@@ -67,7 +77,7 @@ def make_pipeline_map(state):
         name='generate_amplicon_metrics',
         input=output_from('sort_bam'),
         filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).sorted.locatit.bam'),
-        output='alignments/metrics/{sample[0]}.amplicon-metrics.txt',
+        output='metrics/amplicon/{sample[0]}.amplicon-metrics.txt',
         extras=['{sample[0]}'])
 
     # Intersect the bam file with the region of interest
@@ -75,8 +85,8 @@ def make_pipeline_map(state):
         task_func=stages.intersect_bed,
         name='intersect_bed',
         input=output_from('sort_bam'),
-        filter=suffix('.sorted.locatit.bam'),
-        output='.intersectbed.bam')
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).sorted.locatit.bam'),
+        output='metrics/summary/{sample[0]}.intersectbed.bam')
 
     # Calculate coverage metrics from the intersected bam file
     pipeline.transform(
@@ -91,8 +101,8 @@ def make_pipeline_map(state):
         task_func=stages.genome_reads,
         name='genome_reads',
         input=output_from('sort_bam'),
-        filter=suffix('.sorted.locatit.bam'),
-        output='.mapped_to_genome.txt')
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).sorted.locatit.bam'),
+        output='metrics/summary/{sample[0]}.mapped_to_genome.txt')
 
     # Count the number of on-target reads
     pipeline.transform(
@@ -107,8 +117,8 @@ def make_pipeline_map(state):
         task_func=stages.total_reads,
         name='total_reads',
         input=output_from('sort_bam'),
-        filter=suffix('.sorted.locatit.bam'),
-        output='.total_raw_reads.txt')
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9_-]+).sorted.locatit.bam'),
+        output='metrics/summary/{sample[0]}.total_raw_reads.txt')
 
     # Generate summary metrics from the stats files produces
     pipeline.collate(
@@ -117,8 +127,8 @@ def make_pipeline_map(state):
         input=output_from('coverage_bed', 'genome_reads', 'target_reads', 'total_reads'), 
         #filter=regex(r'.+/(.+BS\d{4,6}.+S\d+)\..+\.txt'),
         filter=regex(r'.+/(.+)\.(bedtools_hist_all|mapped_to_genome|mapped_to_target|total_raw_reads)\.txt'),
-        output=r'alignments/metrics/all_sample.summary.\1.txt',
-        extras=[r'\1', 'alignments/metrics/all_sample.summary.txt'])
+        output=r'metrics/summary/all_sample.summary.\1.txt',
+        extras=[r'\1', 'all_sample.summary.txt'])
     # # # # # Metrics stages end # # # # #
 
     # # # # # Checking metrics and calling # # # # #
@@ -126,7 +136,7 @@ def make_pipeline_map(state):
     (pipeline.originate(
         task_func=stages.grab_summary_file,
         name='grab_summary_file',
-        output='alignments/metrics/all_sample.summary.txt')
+        output='all_sample.summary.txt')
             .follows('generate_stats'))
 
     # Awk command to produce a list of bam files passing filters
@@ -143,7 +153,7 @@ def make_pipeline_map(state):
         task_func=stages.read_samples,
         input=output_from('filter_stats'),
         filter=formatter(),
-        output="alignments/pass_samples/*.bam")
+        output="metrics/pass_samples/*.bam")
 
     # Call variants using GATK
     (pipeline.transform(

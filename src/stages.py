@@ -76,7 +76,6 @@ class Stages(object):
     def run_surecalltrimmer(self, inputs, outputs, sample_id):
         '''Run SurecallTrimmer on the raw reads'''
         fastq_read1_in, fastq_read2_in = inputs
-        safe_make_dir('processed_fastqs')
         # Need to make the path to this .jar file a variable in config file
         command = 'java -Xmx{mem}g -jar /projects/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar ' \
                                    '-fq1 {fastq_read1} -fq2 {fastq_read2} -hs -out_loc ./processed_fastqs; ' \
@@ -92,7 +91,6 @@ class Stages(object):
         '''Align the paired end fastq files to the reference genome using bwa'''
         fastq_read1_in, fastq_read2_in = inputs
         cores = self.get_stage_options('align_bwa', 'cores')
-        safe_make_dir('alignments')
         read_group = '"@RG\\tID:{sample}\\tSM:{sample}\\tPU:lib1\\tPL:Illumina"' \
             .format(sample=sample_id)
         command = 'bwa mem -M -t {cores} -R {read_group} {reference} {fastq_read1} {fastq_read2} ' \
@@ -126,7 +124,6 @@ class Stages(object):
 
     def call_haplotypecaller_gatk(self, bam_in, vcf_out):
         '''Call variants using GATK'''
-        safe_make_dir('variants/gatk')
         bam_in = 'alignments/' + os.path.basename(bam_in)
         cores = self.get_stage_options('call_haplotypecaller_gatk', 'cores')
         gatk_args = "-T HaplotypeCaller -R {reference} --min_base_quality_score 20 " \
@@ -157,7 +154,6 @@ class Stages(object):
     #########################################################
     def generate_amplicon_metrics(self, bam_in, txt_out, sample):
         '''Generate depth information for each amplicon and sample for heatmap plotting'''
-        safe_make_dir('alignments/metrics')
         command = 'bedtools coverage -f 5E-1 -a {bed_intervals} -b {bam_in} | ' \
                   'sed "s/$/	{sample}/g" > {txt_out}'.format(bed_intervals=self.interval_file,
                                                                 bam_in=bam_in,
@@ -198,7 +194,6 @@ class Stages(object):
 
     def generate_stats(self, inputs, txt_out, samplename, joint_output):
         '''run R stats script'''
-        safe_make_dir('alignments/metrics')
         # Assigning inputfiles to correct variables based on suffix
         for inputfile in inputs:
             if inputfile.endswith('.bedtools_hist_all.txt'):
@@ -235,7 +230,6 @@ class Stages(object):
     def read_samples(self, input_pth, outputs):
         '''Reads the list of pass samples and touches files accordingly 
         in the alignments/pass_samples folder'''
-        safe_make_dir('alignments/pass_samples')
         with open(input_pth, 'r') as inputf:
             pass_files = inputf.read().split('\n')
         command_l = []
