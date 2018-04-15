@@ -234,7 +234,7 @@ class Stages(object):
             pass_files = inputf.read().split('\n')
         command_l = []
         for f in pass_files:
-            command_l.append("alignments/pass_samples/{}".format(f))
+            command_l.append("metrics/pass_samples/{}".format(f))
         command = 'touch {}'.format(' '.join(command_l))
         run_stage(self.state, 'read_samples', command)
     
