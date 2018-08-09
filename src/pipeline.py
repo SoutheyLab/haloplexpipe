@@ -168,12 +168,12 @@ def make_pipeline_map(state):
     # Call variants with vardict
     (pipeline.transform(
         task_func=stages.run_vardict,
-        name='run_vardict'
+        name='run_vardict',
         input=output_from('passed_filter_files'),
         filter=formatter('.+/(?P<sample>[a-zA-Z0-9-_]+).sorted.locatit.bam'),
         output='variants/vardict/{sample[0]}.vcf',
         extras=['{sample[0]}'])
-        .follows('sort_bam')
+        .follows('sort_bam'))
 
     pipeline.transform(                                                                                                
         task_func=stages.sort_vcfs,                                                                                    
