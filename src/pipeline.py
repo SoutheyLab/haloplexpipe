@@ -25,7 +25,8 @@ def make_pipeline_map(state):
     safe_make_dir('metrics/pass_samples')
     safe_make_dir('variants')
     safe_make_dir('variants/gatk')
-    
+    safe_make_dir('variants/vardict')
+ 
     # The original FASTQ files
     # This is a dummy stage. It is useful because it makes a node in the
     # pipeline graph, and gives the pipeline an obvious starting point.
