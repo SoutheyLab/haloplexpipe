@@ -164,6 +164,30 @@ def make_pipeline_map(state):
         output='variants/gatk/{sample[0]}.g.vcf')
         .follows('sort_bam'))
 
+    # Call variants with vardict
+    (pipeline.transform(
+        task_func=stages.run_vardict,
+        name='run_vardict'
+        input=output_from('passed_filter_files'),
+        filter=formatter('.+/(?P<sample>[a-zA-Z0-9-_]+).sorted.locatit.bam'),
+        output='variants/vardict/{sample[0]}.vcf',
+        extras=['{sample[0]}'])
+        .follows('sort_bam')
+
+    pipeline.transform(                                                                                                
+        task_func=stages.sort_vcfs,                                                                                    
+        name='sort_vcfs',                                                                                              
+        input=output_from('run_vardict'),                                                                              
+        filter=formatter('variants/vardict/(?P<sample>[a-zA-Z0-9_-]+).vcf'),                                           
+        output='variants/vardict/{sample[0]}.sorted.vcf.gz')                                                           
+                                                                                                                       
+    pipeline.transform(                                                                                                
+        task_func=stages.index_vcfs,                                                                                   
+        name='index_vcfs',                                                                                             
+        input=output_from('sort_vcfs'),                                                                                
+        filter=suffix('.sorted.vcf.gz'),                                                                               
+        output='.sorted.vcf.gz.tbi')        
+
     return(pipeline)
 
 
@@ -187,7 +211,6 @@ def make_pipeline_process(state):
         name='glob_gatk',
         output=gatk_files)
 
-    
     # Combine G.VCF files for all samples using GATK
     pipeline.merge(
         task_func=stages.combine_gvcf_gatk,
@@ -242,5 +265,48 @@ def make_pipeline_process(state):
         input=output_from('gatk_filter'),
         filter=suffix('.raw.gt-filter.decomp.norm.annotate.filter.vcf'),
         output='.raw.gt-filter.decomp.norm.annotate.filter.vep.vcf')
+
+####### vardict stuff
+
+
+    #dummy stage to take the globbed outputs of each run that is to be processed
+    pipeline.originate(
+        task_func=stages.glob_gatk,
+        name='glob_vardict',
+        output=gatk_files)
+
+
+    vardict_files = []
+    for directory in run_directories:
+        gatk_files.extend(glob.glob(directory + '/variants/vardict/*sorted.vcf.gz'))
+
+    #concatenate all vardict vcfs
+    pipeline.merge(
+        task_func=stages.concatenate_vcfs,
+        name='concatenate_vcfs',
+        input=output_from('glob_vardict'),
+        output='variants/vardict/combined.vcf.gz')
+
+    pipeline.transform(
+        task_func=stages.vt_decompose_normalise,
+        name='vt_decompose_normalise_vardict',
+        input=output_from('concatenate_vcfs'),
+        filter=suffix('.vcf.gz'),
+        output='.decomp.norm.vcf.gz')
+
+    pipeline.transform(
+        task_func=stages.index_vcfs,
+        name='index_final_vcf',
+        input=output_from('vt_decompose_normalise_vardict'),
+        filter=suffix('.decomp.norm.vcf.gz'),
+        output='.decomp.norm.vcf.gz.tbi')
+
+    (pipeline.transform(
+        task_func=stages.apply_vep,
+        name='apply_vep_vardict',
+        input=output_from('vt_decompose_normalise_vardict'),
+        filter=suffix('.decomp.norm.vcf.gz'),
+        output='.decomp.norm.vep.vcf')
+        .follows('index_final_vcf'))
 
     return pipeline

@@ -31,6 +31,8 @@ class Stages(object):
     def __init__(self, state):
         self.state = state
         self.reference = self.get_options('ref_grch37')
+        self.vardict_bed = self.get_options('vardict_bed')
+        self.AF_THR = self.get_options('AF_THR')
         self.dbsnp_b37 = self.get_options('dbsnp_b37')
         self.interval_file = self.get_options('interval_file')
         self.other_vep = self.get_options('other_vep')
@@ -146,6 +148,32 @@ class Stages(object):
                                                                   bam=bam_in, interval_list=self.interval_file,
                                                                   out=vcf_out, cores=cores)
         self.run_gatk('call_haplotypecaller_gatk', gatk_args)
+
+    def run_vardict(self, bam_in, vcf_out, sample_name):
+        '''call variants with vardict'''
+        bam_in = 'alignments/' + os.path.basename(bam_in) 
+        command = 'export PATH=/home/jste0021/scripts/git_controlled/VarDict:$PATH; ' \
+                  'vardict -G {reference} -f {AF_THR} -N {sample_name} -b {bam_in} -c 1 -S 2 -E 3 -g 4 {vardict_bed} | ' \
+                  'teststrandbias.R | ' \
+                  'var2vcf_valid_b37_chrnames.pl -N {sample_name} -E -f {AF_THR} > {vcf_out}'.format(
+                             reference=self.reference,
+                             AF_THR=self.AF_THR,
+                             sample_name=sample_name,
+                             bam_in=bam_in,
+                             vardict_bed=self.vardict_bed,
+                             vcf_out=vcf_out)
+        run_stage(self.state, 'run_vardict', command) 
+
+    def sort_vcfs(self, vcf_in, vcf_out):
+        '''sort vardict vcf files'''
+        command = 'bcftools sort -o {vcf_out} -O z {vcf_in}'.format(vcf_out=vcf_out, vcf_in=vcf_in)
+        run_stage(self.state, 'sort_vcfs', command)
+
+    def index_vcfs(self, vcf_in, vcf_out):
+        '''Index vardcit vcf files'''
+        command = 'bcftools index -f --tbi {vcf_in}'.format(vcf_in=vcf_in)
+        run_stage(self.state, 'index_vcfs', command)
+
 
     ################## Map metrics methods ##################
     # Methods to generate metrics on the aligned bam files,
@@ -275,6 +303,29 @@ class Stages(object):
         final_command = ''.join(merge_commands)
         run_stage(self.state, 'combine_gvcf_gatk', final_command)
 
+    def glob_vardict:
+        '''grab all the vardict vcf files'''
+        pass    
+
+    def concatenate_vcfs(self, vcf_files_in, vcf_out):
+        merge_commands = []
+        temp_merge_outputs = []
+        for n in range(0, int(math.ceil(float(len(vcf_files_in)) / 200.0))):
+            start = n * 200
+            filelist = vcf_files_in[start:start + 200]
+            filelist_command = ' '.join([vcf for vcf in filelist])
+            temp_merge_filename = vcf_out.rstrip('.vcf') + ".temp_{start}.vcf".format(start=str(start))
+            command1 = 'bcftools merge -O z -o {vcf_out} {join_vcf_files} && bcftools index -t -f {vcf_out}; '.format(vcf_out=temp_merge_filename, join_vcf_files=filelist_command)
+            merge_commands.append(command1)
+            temp_merge_outputs.append(temp_merge_filename)
+
+        final_merge_vcfs = ' '.join([vcf for vcf in temp_merge_outputs])
+        command2 = 'bcftools merge -O z -o {vcf_out} {join_vcf_files} '.format(vcf_out=vcf_out, join_vcf_files=final_merge_vcfs)
+
+        merge_commands.append(command2)
+        final_command = ''.join(merge_commands)
+        run_stage(self.state, 'concatenate_vcfs', final_command)
+
     def genotype_gvcf_gatk(self, combined_vcf_in, vcf_out):
         '''Genotype G.VCF files using GATK'''
         cores = self.get_stage_options('genotype_gvcf_gatk', 'cores')
@@ -401,3 +452,7 @@ class Stages(object):
                                             caddpath=self.cadd)
         run_stage(self.state, 'apply_vep', vep_command)
 
+    def index_vcfs(self, vcf_in, vcf_out):                                                                             
+        '''Index undr_rover vcf files'''                                                                               
+        command = 'bcftools index -f --tbi {vcf_in}'.format(vcf_in=vcf_in)                                             
+        run_stage(self.state, 'index_vcfs', command)      
