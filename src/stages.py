@@ -303,7 +303,7 @@ class Stages(object):
         final_command = ''.join(merge_commands)
         run_stage(self.state, 'combine_gvcf_gatk', final_command)
 
-    def glob_vardict:
+    def glob_vardict(self, output):
         '''grab all the vardict vcf files'''
         pass    
 
