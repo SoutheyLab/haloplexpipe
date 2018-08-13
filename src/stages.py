@@ -273,6 +273,7 @@ class Stages(object):
     def combine_gvcf_gatk(self, vcf_files_in, vcf_out):
         '''Combine G.VCF files for all samples using GATK'''
         safe_make_dir('processed')
+        safe_make_dir('processed/gatk')
         merge_commands = []
         temp_merge_outputs = []
         for n in range(0, int(math.ceil(float(len(vcf_files_in)) / 200.0))):
@@ -308,7 +309,9 @@ class Stages(object):
         pass    
 
     def concatenate_vcfs(self, vcf_files_in, vcf_out):
-        safe_make_dir('processed/vardict')
+       safe_make_dir('processed') 
+       safe_make_dir('processed/vardict')
+        
         merge_commands = []
         temp_merge_outputs = []
         for n in range(0, int(math.ceil(float(len(vcf_files_in)) / 200.0))):

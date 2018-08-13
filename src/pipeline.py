@@ -217,7 +217,7 @@ def make_pipeline_process(state):
         task_func=stages.combine_gvcf_gatk,
         name='combine_gvcf_gatk',
         input=output_from('glob_gatk'),
-        output='processed/ALL.combined.vcf')
+        output='processed/gatk/ALL.combined.vcf')
 
     # Genotype G.VCF files using GATK
     pipeline.transform(
@@ -279,7 +279,7 @@ def make_pipeline_process(state):
 
     vardict_files = []
     for directory in run_directories:
-        gatk_files.extend(glob.glob(directory + '/variants/vardict/*sorted.vcf.gz'))
+        vardcit_files.extend(glob.glob(directory + '/variants/vardict/*sorted.vcf.gz'))
 
     safe_make_dir('processed/vardict')
 
