@@ -281,12 +281,14 @@ def make_pipeline_process(state):
     for directory in run_directories:
         gatk_files.extend(glob.glob(directory + '/variants/vardict/*sorted.vcf.gz'))
 
+    safe_make_dir('processed/vardict')
+
     #concatenate all vardict vcfs
     pipeline.merge(
         task_func=stages.concatenate_vcfs,
         name='concatenate_vcfs',
         input=output_from('glob_vardict'),
-        output='variants/vardict/combined.vcf.gz')
+        output='processed/vardict/combined.vcf.gz')
 
     pipeline.transform(
         task_func=stages.vt_decompose_normalise,
