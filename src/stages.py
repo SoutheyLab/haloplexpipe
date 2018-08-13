@@ -309,8 +309,8 @@ class Stages(object):
         pass    
 
     def concatenate_vcfs(self, vcf_files_in, vcf_out):
-       safe_make_dir('processed') 
-       safe_make_dir('processed/vardict')
+        safe_make_dir('processed') 
+        safe_make_dir('processed/vardict')
         
         merge_commands = []
         temp_merge_outputs = []
