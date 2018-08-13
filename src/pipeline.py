@@ -274,12 +274,12 @@ def make_pipeline_process(state):
     pipeline.originate(
         task_func=stages.glob_gatk,
         name='glob_vardict',
-        output=gatk_files)
+        output=vardict_files)
 
 
     vardict_files = []
     for directory in run_directories:
-        vardcit_files.extend(glob.glob(directory + '/variants/vardict/*sorted.vcf.gz'))
+        vardict_files.extend(glob.glob(directory + '/variants/vardict/*sorted.vcf.gz'))
 
     safe_make_dir('processed/vardict')
 
