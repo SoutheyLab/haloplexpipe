@@ -53,7 +53,7 @@ def run_stage(state, stage, command):
     cluster_command = '\n'.join([module_loads, command])
 
     # Specify job-specific options for SLURM
-    job_options = '--nodes=1 --ntasks-per-node={cores} --ntasks={cores} --time={time} --mem={mem} --partition={queue} --account={account}' \
+    job_options = '--nodes=1 --ntasks-per-node={cores} --ntasks={cores} --time={time} --mem={mem} --qos=normal --partition={queue} --account={account}' \
                       .format(cores=cores, time=walltime, mem=mem, queue=queue, account=account)
 
     # Log a message about the job we are about to run
