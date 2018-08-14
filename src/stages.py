@@ -152,10 +152,9 @@ class Stages(object):
     def run_vardict(self, bam_in, vcf_out, sample_name):
         '''call variants with vardict'''
         bam_in = 'alignments/' + os.path.basename(bam_in) 
-        command = 'export PATH=/home/jste0021/scripts/git_controlled/VarDict:$PATH; ' \
-                  'vardict -G {reference} -f {AF_THR} -N {sample_name} -b {bam_in} -c 1 -S 2 -E 3 -g 4 {vardict_bed} | ' \
+        command = '~/scripts/git_controlled/VarDictJava/build/install/VarDict/bin/VarDict -G {reference} -f {AF_THR} -N {sample_name} -b {bam_in} -c 1 -S 2 -E 3 -g 4 {vardict_bed} | ' \
                   'teststrandbias.R | ' \
-                  'var2vcf_valid_b37_chrnames.pl -N {sample_name} -E -f {AF_THR} > {vcf_out}'.format(
+                  '~/scripts/git_controlled/vardict/var2vcf_valid_b37_chrnames.pl -N {sample_name} -E -f {AF_THR} > {vcf_out}'.format(
                              reference=self.reference,
                              AF_THR=self.AF_THR,
                              sample_name=sample_name,
