@@ -81,8 +81,6 @@ class Stages(object):
         # Need to make the path to this .jar file a variable in config file
         command = 'java -Xmx{mem}g -jar /projects/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar ' \
                                    '-fq1 {fastq_read1} -fq2 {fastq_read2} -hs -out_loc ./processed_fastqs; ' \
-                                   #'mv ./processed_fastqs/{sample}_R1_001.fastq.gz* ./processed_fastqs/{sample}_R1_001.processed.fastq.gz; ' \
-                                   #'mv ./processed_fastqs/{sample}_R3_001.fastq.gz* ./processed_fastqs/{sample}_R3_001.processed.fastq.gz' \
                                    'mv ./processed_fastqs/{sample}_R1.fastq.gz* ./processed_fastqs/{sample}_R1.processed.fastq.gz; ' \
                                    'mv ./processed_fastqs/{sample}_R2.fastq.gz* ./processed_fastqs/{sample}_R2.processed.fastq.gz' \
                   .format(mem=self.state.config.get_stage_options('run_surecalltrimmer', 'mem'),
@@ -90,6 +88,21 @@ class Stages(object):
                           fastq_read2=fastq_read2_in,
                           sample=sample_id)
         run_stage(self.state, 'run_surecalltrimmer', command) 
+
+#    def run_surecalltrimmer(self, inputs, outputs, sample_id):
+#        '''Run SurecallTrimmer on the raw reads'''
+#        fastq_read1_in, fastq_read2_in = inputs
+#        # Need to make the path to this .jar file a variable in config file
+#        command = 'java -Xmx{mem}g -jar /projects/vh83/local_software/agent/SurecallTrimmer_v4.0.1.jar ' \
+#                                   '-fq1 {fastq_read1} -fq2 {fastq_read2} -hs -out_loc ./processed_fastqs; ' \
+#                                   'mv ./processed_fastqs/{sample}_R1_001.fastq.gz* ./processed_fastqs/{sample}_R1_001.processed.fastq.gz; ' \
+#                                   'mv ./processed_fastqs/{sample}_R3_001.fastq.gz* ./processed_fastqs/{sample}_R3_001.processed.fastq.gz' \
+#                  .format(mem=self.state.config.get_stage_options('run_surecalltrimmer', 'mem'),
+#                          fastq_read1=fastq_read1_in,
+#                          fastq_read2=fastq_read2_in,
+#                          sample=sample_id)
+#        run_stage(self.state, 'run_surecalltrimmer', command)
+
 
     def align_bwa(self, inputs, bam_out, sample_id):
         '''Align the paired end fastq files to the reference genome using bwa'''
