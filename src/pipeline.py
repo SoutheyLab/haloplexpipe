@@ -45,7 +45,7 @@ def make_pipeline_map(state):
         #add_inputs=add_inputs('fastqs/{sample[0]}_R3_001.fastq.gz'),
         extras=['{sample[0]}'],
         # output only needs to know about one file to track progress of the pipeline, but the second certainly exists after this step.
-        output='processed_fastqs/{sample[0]}_I2.processed.fastq.gz')
+        output='processed_fastqs/{sample[0]}_R1.processed.fastq.gz')
         #output='processed_fastqs/{sample[0]}_R1_001.processed.fastq.gz')
     
 
