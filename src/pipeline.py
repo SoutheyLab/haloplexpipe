@@ -61,7 +61,7 @@ def make_pipeline_map(state):
         task_func=stages.run_locatit,
         name='run_locatit',
         input=output_from('align_bwa', 'original_fastqs'),
-        filter=regex(r'.+/(.+_001).+'),
+        filter=regex(r'.+/(.+_\d\d\d).+'),
         output=r'alignments/\1.locatit.bam')
     
     pipeline.transform(
