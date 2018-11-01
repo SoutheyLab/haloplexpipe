@@ -169,7 +169,7 @@ class Stages(object):
         '''call variants with vardict'''
         bam_in = 'alignments/' + os.path.basename(bam_in) 
         command = '~/scripts/git_controlled/VarDictJava/build/install/VarDict/bin/VarDict -G {reference} -f {AF_THR} -N {sample_name} -b {bam_in} -c 1 -S 2 -E 3 -g 4 {vardict_bed} | ' \
-                  'teststrandbias.R | ' \
+                  '~/scripts/git_controlled/VarDictJava/build/install/VarDict/bin/teststrandbias.R | ' \
                   '~/scripts/git_controlled/VarDict/var2vcf_valid_b37_chrnames.pl -N {sample_name} -E -f {AF_THR} > {vcf_out}'.format(
                              reference=self.reference,
                              AF_THR=self.AF_THR,
