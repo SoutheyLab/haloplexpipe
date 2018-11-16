@@ -316,8 +316,8 @@ class Stages(object):
         merge_commands = []
         temp_merge_outputs = []
         for n in range(0, int(math.ceil(float(len(vcf_files_in)) / 50.0))):
-            start = n * 500
-            filelist = vcf_files_in[start:start + 500]
+            start = n * 50
+            filelist = vcf_files_in[start:start + 50]
             filelist_command = ' '.join([vcf for vcf in filelist])
             temp_merge_filename = vcf_out.rstrip('.vcf') + ".temp_{start}.vcf".format(start=str(start))
             command1 = 'bcftools merge -O z -o {vcf_out} {join_vcf_files} && bcftools index -t -f {vcf_out}; '.format(vcf_out=temp_merge_filename, join_vcf_files=filelist_command)
